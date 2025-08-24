@@ -1,0 +1,33 @@
+/* ContactInfo.css */
+.contact-info {
+  position: fixed;
+  bottom: 16px;
+  left: 16px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.8rem;
+  z-index: 100;
+  font-family: 'Roboto', sans-serif;
+  text-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+  pointer-events: auto; /* Make the text clickable */
+}
+
+.contact-info a {
+  color: rgba(255, 255, 255, 0.8);
+  text-decoration: none;
+  transition: color 0.2s ease-in-out;
+}
+
+.contact-info a:hover {
+  color: rgba(255, 255, 255, 1);
+  text-decoration: underline;
+}
+
+/* Media query for small screens (phones) */
+@media (max-width: 768px) {
+  .contact-info {
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    width: 100%;
+  }
+}

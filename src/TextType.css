@@ -1,0 +1,24 @@
+.text-type {
+  display: inline-block;
+  white-space: pre-wrap;
+}
+
+.text-type__cursor {
+  margin-left: 0.25rem;
+  display: inline-block;
+  opacity: 1;
+}
+
+.text-type__cursor--hidden {
+  display: none;
+}
+
+/* Make text larger for better visibility */
+.text-type__content {
+  font-size: 2rem; /* Increased from 1.5rem */
+  font-weight: 400;
+  line-height: 1.6;
+  color: #ffffff;
+  letter-spacing: 0.01em;
+  text-shadow: 0 0 12px rgba(0,0,0,0.8); /* Enhanced shadow for better visibility */
+}

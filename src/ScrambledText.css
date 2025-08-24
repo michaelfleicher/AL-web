@@ -1,0 +1,52 @@
+.text-block {
+  position: relative;
+  display: block;
+  line-height: 1.5;
+  font-family: 'Roboto', sans-serif; /* Using Roboto font */
+  letter-spacing: 0.01em; /* Slightly adjusted letter spacing */
+  font-kerning: normal; /* Enable kerning for Roboto */
+  font-feature-settings: "kern" 1; /* Enable kerning feature */
+  text-transform: none; /* Keep mixed case for better readability */
+  cursor: pointer; /* Add pointer cursor to indicate interactivity */
+  transition: opacity 0.3s ease; /* Smooth transition for hover effect */
+}
+
+.text-block:hover {
+  opacity: 0.9; /* Slight opacity change on hover as additional visual feedback */
+}
+
+/* Line container styling */
+.line-container {
+  margin: 0.3em 0; /* Add spacing between lines */
+  display: block;
+  white-space: nowrap;
+}
+
+/* Word wrapper to keep words together */
+.word-wrapper {
+  display: inline-block;
+  white-space: nowrap;
+  margin-right: 0.25em; /* Add more space between words */
+}
+
+.char {
+  display: inline-block;
+  position: relative;
+  box-sizing: border-box;
+  text-align: center;
+  /* Prevent layout shifts */
+  vertical-align: baseline;
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+  /* Using Roboto font */
+  font-family: 'Roboto', sans-serif;
+  margin: 0;
+  padding: 0 0.01em; /* Slightly reduced padding between characters */
+  font-kerning: normal; /* Enable kerning for better readability */
+  font-feature-settings: "kern" 1; /* Enable kerning feature */
+}
+
+.space {
+  display: inline-block;
+  /* Width will be set dynamically in JS based on actual font metrics */
+}

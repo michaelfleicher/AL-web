@@ -1,0 +1,65 @@
+.text-type {
+  display: inline-block;
+  white-space: pre-wrap;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.text-type__cursor {
+  margin-left: 0.25rem;
+  display: inline-block;
+  opacity: 1;
+}
+
+.text-type__cursor--hidden {
+  display: none;
+}
+
+/* Make text larger for better visibility */
+.text-type__content {
+  font-size: 2rem;
+  font-weight: 400;
+  line-height: 1.6;
+  color: #ffffff;
+  letter-spacing: 0.01em;
+  text-shadow: 0 0 12px rgba(0,0,0,0.8);
+}
+
+/* Responsive styles for TextType */
+@media (max-width: 768px) {
+  .text-type__content {
+    font-size: 1.6rem;
+    line-height: 1.5;
+  }
+}
+
+@media (max-width: 480px) {
+  .text-type__content {
+    font-size: 1.2rem;
+    line-height: 1.4;
+    letter-spacing: 0;
+  }
+  
+  .text-type {
+    padding: 0 0.5rem;
+  }
+  
+  .text-type__cursor {
+    margin-left: 0.1rem;
+  }
+}
+
+/* Small phones */
+@media (max-width: 320px) {
+  .text-type__content {
+    font-size: 1rem;
+  }
+}
+
+/* Landscape mode */
+@media (max-height: 500px) and (orientation: landscape) {
+  .text-type__content {
+    font-size: 1rem;
+    line-height: 1.3;
+  }
+}

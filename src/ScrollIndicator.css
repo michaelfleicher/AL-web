@@ -1,0 +1,52 @@
+.scroll-indicator {
+  font-size: 6rem; /* Much bigger than before */
+  position: absolute;
+  bottom: 0.5rem; /* Now very close to the bottom */
+  left: 50%;
+  transform: translateX(-50%);
+  color: #ffffff;
+  opacity: 0;
+  transition: opacity 0.8s ease;
+  pointer-events: none;
+  z-index: 100;
+  text-shadow: 0 0 15px rgba(0,0,0,0.6), 0 0 25px rgba(255,255,255,0.4); /* Enhanced shadow with glow effect */
+  user-select: none;
+  line-height: 0.8; /* Tighter line height to control vertical positioning */
+  transform-origin: center center; /* Ensure scaling happens from center */
+  will-change: transform, opacity, y; /* Optimize for animations */
+}
+
+.scroll-indicator.visible {
+  opacity: 1;
+}
+
+/* Responsive adjustments for different screen sizes */
+@media (max-width: 768px) {
+  .scroll-indicator {
+    font-size: 4rem; /* Smaller on tablets */
+    bottom: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .scroll-indicator {
+    font-size: 3.5rem; /* Even smaller on phones */
+    bottom: 1.5rem;
+  }
+}
+
+/* Small phones */
+@media (max-width: 320px) {
+  .scroll-indicator {
+    font-size: 3rem;
+    bottom: 1rem;
+  }
+}
+
+/* Adjust for landscape orientation */
+@media (max-height: 500px) and (orientation: landscape) {
+  .scroll-indicator {
+    font-size: 2.5rem;
+    bottom: 0.5rem;
+  }
+}

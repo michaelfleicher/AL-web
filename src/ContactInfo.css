@@ -1,0 +1,60 @@
+/* ContactInfo.css */
+.contact-info {
+  position: fixed;
+  bottom: 16px;
+  left: 16px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.8rem;
+  z-index: 100;
+  font-family: 'Roboto', sans-serif;
+  text-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+  pointer-events: auto; /* Make the text clickable */
+}
+
+.contact-info a {
+  color: rgba(255, 255, 255, 0.8);
+  text-decoration: none;
+  transition: color 0.2s ease-in-out;
+}
+
+.contact-info a:hover {
+  color: rgba(255, 255, 255, 1);
+  text-decoration: underline;
+}
+
+/* Media query for small screens (phones) */
+@media (max-width: 768px) {
+  .contact-info {
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    width: 100%;
+    padding: 8px 0;
+    background-color: rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(5px);
+  }
+}
+
+/* Extra small screens */
+@media (max-width: 320px) {
+  .contact-info {
+    font-size: 0.7rem;
+    bottom: 8px;
+  }
+}
+
+/* Adjust for landscape mode on mobile */
+@media (max-height: 500px) and (orientation: landscape) {
+  .contact-info {
+    bottom: 5px;
+    padding: 3px 0;
+  }
+}
+
+/* Larger touch target for mobile */
+@media (hover: none) and (pointer: coarse) {
+  .contact-info a {
+    padding: 8px;
+    display: inline-block;
+  }
+}

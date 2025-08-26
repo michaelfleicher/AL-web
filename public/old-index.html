@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Extending Humanity's Healthspan</title>
+  <!-- 
+    Important notes about this implementation:
+    1. Videos must be muted for autoplay to work in most browsers
+    2. Video 1 and 3 need loop=true, while 2 and 4 should have loop=false
+    3. If videos don't autoplay, the user may need to click once on the page
+  -->
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100vh;
+      width: 100vw;
+      overflow: hidden;
+      background: #000;
+      color: #fff;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+    }
+    .stage { 
+      position: fixed; 
+      inset: 0; 
+      background: #000; 
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+    }
+    .layer { 
+      position: absolute; 
+      inset: 0; 
+      width: 100vw;
+      height: 100vh;
+      opacity: 0; 
+      transition: opacity 1s linear; 
+      pointer-events: none; 
+    }
+    .video-mask {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+      background-color: #000;
+      pointer-events: none;
+    }
+    .layer.active { opacity: 1; }
+    iframe { 
+      width: 100vw; 
+      height: 100vh; 
+      border: none; 
+      background: #000; 
+      pointer-events: none; /* Allow scrolling through the iframe */
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      object-fit: cover; /* Ensures video covers the entire area */
+    }
+    .badge {
+      position: fixed; top: 16px; left: 16px;
+      background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.25);
+      padding: 6px 10px; border-radius: 999px; font-weight: 600;
+      backdrop-filter: blur(6px); user-select: none; pointer-events: none;
+      z-index: 10;
+    }
+    .controls { position: fixed; top: 16px; right: 16px; display: flex; gap: 8px; z-index: 10; }
+    .btn {
+      appearance: none; border: 1px solid rgba(255,255,255,0.25);
+      background: rgba(255,255,255,0.06); color: #fff;
+      padding: 6px 10px; border-radius: 8px; cursor: pointer;
+    }
+    .btn:hover { background: rgba(255,255,255,0.12); }
+    .hint {
+      position: fixed; bottom: 16px; right: 16px; font-size: 14px; opacity: .75;
+      background: rgba(0,0,0,.35); padding: 8px 10px; border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.2); backdrop-filter: blur(6px);
+      z-index: 10;
+    }
+  </style>
+</head>
+<body>
+  <div class="stage" aria-label="Video Stage">
+    <div class="layer active" id="layerA">
+      <iframe id="videoA" frameborder="0" allowfullscreen allow="autoplay" autoplay muted></iframe>
+      <div id="maskA" class="video-mask"></div>
+    </div>
+    <div class="layer" id="layerB">
+      <iframe id="videoB" frameborder="0" allowfullscreen allow="autoplay" autoplay muted></iframe>
+      <div id="maskB" class="video-mask"></div>
+    </div>
+  </div>
+
+  <div class="badge" id="badge" style="display: none;">Video: —</div>
+
+  <div class="controls">
+  <!-- Controls removed: Reset to First Video button deleted -->
+  </div>
+
+  <div class="hint">Scroll down to move between main videos through transitions. Scroll up to restart with the first video. Each transition has a 1-second crossfade effect.</div>
+
+  <script>
+    // === Bunny Stream iframe embed URLs with autoplay, muted, and loop options ===
+    // Using your provided URLs with corrections for autoplay and looping requirements
+    const SOURCES = {
+      // Video 1 - should loop when site loads
+      1: 'https://iframe.mediadelivery.net/embed/484331/6f66940f-70ad-4431-bcab-486d3047c53d?autoplay=true&loop=true&muted=true&preload=true&responsive=true&fullscreen=true',
+      // Video 2 - plays once then goes to video 3
+      2: 'https://iframe.mediadelivery.net/embed/484331/3b69f9ef-a23a-4551-bd6f-01328b5777bb?autoplay=true&loop=false&muted=true&preload=true&responsive=true&fullscreen=true',
+      // Video 3 - should be different from video 2 and should loop
+      3: 'https://iframe.mediadelivery.net/embed/484331/c68ab894-5fc2-4b8b-907f-ecb3dd15dcc8?autoplay=true&loop=true&muted=true&preload=true&responsive=true&fullscreen=true',
+      // Video 4 - plays once then goes to video 1
+      4: 'https://iframe.mediadelivery.net/embed/484331/8c4625f8-0b01-4e2f-abfb-69a4bc07ec75?autoplay=true&loop=false&muted=true&preload=true&responsive=true&fullscreen=true'
+    };
+
+    let activeLayer = 'A';
+    let currentVideoId = null; // 1..4
+    let inTransition = false;
+    let playingOnce = false;
+    let preloadedVideos = {}; // Track which videos are preloaded
+
+    const layerA = document.getElementById('layerA');
+    const layerB = document.getElementById('layerB');
+    const videoA = document.getElementById('videoA');
+    const videoB = document.getElementById('videoB');
+    const maskA = document.getElementById('maskA');
+    const maskB = document.getElementById('maskB');
+    const badge  = document.getElementById('badge');
+  // const restartBtn = document.getElementById('restart'); // Removed
+
+    function getNextLayerElements() {
+      const nextLayer = activeLayer === 'A' ? layerB : layerA;
+      const nextVideo = activeLayer === 'A' ? videoB : videoA;
+      const nextMask = activeLayer === 'A' ? maskB : maskA;
+      const curLayer  = activeLayer === 'A' ? layerA : layerB;
+      const curVideo  = activeLayer === 'A' ? videoA : videoB;
+      const curMask = activeLayer === 'A' ? maskA : maskB;
+      return { nextLayer, nextVideo, nextMask, curLayer, curVideo, curMask };
+    }
+
+    function setBadge(id) { badge.textContent = `Video: ${id}`; }
+
+    // Function to get the URL with the appropriate loop parameter
+    function getSourceURL(id, loop = false) {
+      let url = SOURCES[id];
+      // The URLs already have loop parameters set correctly based on our rules
+      return url;
+    }
+    
+    // Function to preload videos to prepare them before they're needed
+    function preloadVideo(id) {
+      if (preloadedVideos[id] || !SOURCES[id]) return;
+      
+      console.log(`Preloading video ${id}...`);
+      const preloadLink = document.createElement('link');
+      preloadLink.rel = 'preload';
+      preloadLink.href = SOURCES[id];
+      preloadLink.as = 'iframe';
+      document.head.appendChild(preloadLink);
+      preloadedVideos[id] = true;
+    }
+
+    async function crossfadeTo(id, { loop = false } = {}) {
+      if (!SOURCES[id]) return;
+      if (inTransition) return;
+      inTransition = true;
+
+      const { nextLayer, nextVideo, nextMask, curLayer, curVideo, curMask } = getNextLayerElements();
+      console.log('Switching to video:', id, loop ? '(looping)' : '(once)');
+      
+      // Only use masks during initial site load, not during transitions
+      // Check if this is the very first video load on the page
+      if (currentVideoId === null && id === 1) {
+        nextMask.style.display = 'block';
+        
+        // Set up video loaded event to hide the mask
+        nextVideo.onload = () => {
+          // Keep mask displayed a bit longer to ensure video is truly ready and play button is gone
+          setTimeout(() => {
+            nextMask.style.display = 'none';
+          }, 2500);
+        };
+        
+        // Backup timeout in case onload doesn't fire
+        setTimeout(() => {
+          nextMask.style.display = 'none';
+        }, 7000);
+      } else {
+        // For all subsequent video transitions, don't use masks
+        nextMask.style.display = 'none';
+      }
+      
+      // Set the iframe source with appropriate parameters
+      nextVideo.src = getSourceURL(id, loop);
+
+      // Allow a moment for the iframe to load before showing it
+      setTimeout(() => {
+        // Show the next video with crossfade
+        nextLayer.classList.add('active');
+        curLayer.classList.remove('active');
+        
+        // Clear the current video iframe source after transition to stop loading/playing
+        setTimeout(() => {
+          curVideo.src = '';
+          inTransition = false;
+          console.log(`Video ${id} now active and visible`);
+          
+          // Preload next videos based on current video
+          if (id === 1) {
+            preloadVideo(2); // Next in sequence
+            preloadVideo(4); // Alternative path
+          } else if (id === 2) {
+            preloadVideo(3); // Next in sequence
+          } else if (id === 3) {
+            preloadVideo(4); // Next in sequence
+          } else if (id === 4) {
+            preloadVideo(1); // Next in sequence
+          }
+        }, 1000);
+        
+        activeLayer = (activeLayer === 'A') ? 'B' : 'A';
+        currentVideoId = id;
+        setBadge(id);
+      }, 500); // Increased delay to ensure iframe loads properly
+    }
+
+    async function playOnceThen(nextId, thenId, thenLoop=true) {
+      playingOnce = true;
+      await crossfadeTo(nextId, { loop: false });
+      
+      // Using the exact video durations you provided
+      // Converted from seconds to milliseconds (seconds × 1000)
+      const videoDurations = {
+        1: 49000, // Video 1: 49 seconds
+        2: 5000,  // Video 2: 5 seconds
+        3: 32000, // Video 3: 32 seconds
+        4: 5000   // Video 4: 5 seconds
+      };
+      
+      setTimeout(async () => {
+        console.log(`Video ${nextId} estimated to have ended, switching to ${thenId}`);
+        playingOnce = false;
+        await crossfadeTo(thenId, { loop: thenLoop });
+      }, videoDurations[nextId] || 15000); // Default to 15s if duration unknown
+    }
+
+    function handleScrollDirection(dir) {
+      if (inTransition || playingOnce) return;
+      
+      if (dir === 'down') {
+        // Scroll down: alternate between main videos via transitions
+        switch(currentVideoId) {
+          case 1:
+            // From main video 1, go to transition video 2, then to main video 3
+            playOnceThen(2, 3, true);
+            break;
+          case 3:
+            // From main video 3, go to transition video 4, then back to main video 1
+            playOnceThen(4, 1, true);
+            break;
+          default:
+            // If we're somehow on a transition video directly, go to video 1
+            crossfadeTo(1, { loop: true });
+        }
+      } else if (dir === 'up') {
+        // Scroll up: always reset to video 1 (main)
+        crossfadeTo(1, { loop: true });
+      }
+    }
+
+    let wheelTimeout = null;
+    window.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const dir = e.deltaY > 0 ? 'down' : (e.deltaY < 0 ? 'up' : null);
+      if (!dir) return;
+      clearTimeout(wheelTimeout);
+      wheelTimeout = setTimeout(() => handleScrollDirection(dir), 40);
+    }, { passive: false });
+
+    let touchStartY = null;
+    window.addEventListener('touchstart', (e) => { touchStartY = e.touches[0].clientY; }, { passive: true });
+    window.addEventListener('touchmove', (e) => {
+      if (touchStartY == null) return;
+      const dy = e.touches[0].clientY - touchStartY;
+      if (Math.abs(dy) < 30) return;
+      const dir = dy < 0 ? 'down' : 'up';
+      touchStartY = e.touches[0].clientY;
+      handleScrollDirection(dir);
+    }, { passive: true });
+    
+  // Removed restart button event listener
+
+    // Initialize videos on page load
+    window.addEventListener('DOMContentLoaded', () => {
+      console.log("Page loaded, initializing first video");
+      
+      // Initialize masks
+      maskA.style.display = 'block';
+      maskB.style.display = 'none';
+      
+      // Start with video 1
+      setTimeout(() => {
+        crossfadeTo(1, { loop: true });
+        
+        // Preload other videos in the background
+        setTimeout(() => {
+          preloadVideo(2);
+          preloadVideo(3);
+          preloadVideo(4);
+        }, 3000); // Delay preloading to prioritize loading video 1 first
+      }, 100);
+    });
+  </script>
+</body>
+</html>

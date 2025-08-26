@@ -2,9 +2,11 @@
 <html lang="en" dir="ltr">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Extending Humanity's Healthspan</title>
   <link rel="stylesheet" href="%PUBLIC_URL%/fonts.css" />
+  <!-- Preload video helper script -->
+  <link rel="preload" href="%PUBLIC_URL%/video-helper.js" as="script">
   <!-- 
     Important notes about this implementation:
     1. Videos must be muted for autoplay to work in most browsers
@@ -678,5 +680,8 @@
       }, 300);
     });
   </script>
+  
+  <!-- Include the video helper script at the end for best performance -->
+  <script src="%PUBLIC_URL%/video-helper.js"></script>
 </body>
 </html>

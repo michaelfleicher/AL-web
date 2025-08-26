@@ -1,13 +1,18 @@
 import './App.css';
 import './fonts.css'; // Import custom fonts
+import './responsive.css'; // Import responsive styles
 import ScrambledText from './ScrambledText';
 import TextType from './TextType';
 import VideoBackground from './VideoBackground';
 import ScrollIndicator from './ScrollIndicator';
 import ContactInfo from './ContactInfo';
+import ResponsiveWrapper from './components/ResponsiveWrapper';
+import useResponsive from './hooks/useResponsive';
 import React, { useEffect, useState } from 'react';
 
 function App() {
+  const responsive = useResponsive();
+  
   const [showTextType, setShowTextType] = useState(false);
   
   useEffect(() => {
@@ -33,14 +38,14 @@ function App() {
   }, []);
   
   return (
-    <>
+    <ResponsiveWrapper>
       {/* This component manages the video background */}
       <VideoBackground />
       
       {/* This is your main app content */}
       <div className="App" style={{ position: 'relative', zIndex: 10 }}>
         <div className="overlay-content">
-          <div className="hero-content">
+          <div className="hero-content" data-device={responsive.deviceType} data-orientation={responsive.orientation}>
             {/* Text for Video 1 */}
             <ScrambledText
               className="big-text"
@@ -84,7 +89,7 @@ function App() {
         {/* Contact information */}
         <ContactInfo />
       </div>
-    </>
+    </ResponsiveWrapper>
   );
 }
 

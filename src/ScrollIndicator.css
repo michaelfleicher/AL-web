@@ -20,10 +20,33 @@
   opacity: 1;
 }
 
-/* Ensure the arrow is visible on different backgrounds */
+/* Responsive adjustments for different screen sizes */
 @media (max-width: 768px) {
   .scroll-indicator {
-    font-size: 5rem; /* Still quite large on mobile */
+    font-size: 4rem; /* Smaller on tablets */
+    bottom: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .scroll-indicator {
+    font-size: 3.5rem; /* Even smaller on phones */
+    bottom: 1.5rem;
+  }
+}
+
+/* Small phones */
+@media (max-width: 320px) {
+  .scroll-indicator {
+    font-size: 3rem;
+    bottom: 1rem;
+  }
+}
+
+/* Adjust for landscape orientation */
+@media (max-height: 500px) and (orientation: landscape) {
+  .scroll-indicator {
+    font-size: 2.5rem;
     bottom: 0.5rem;
   }
 }

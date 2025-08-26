@@ -96,7 +96,8 @@ const ScrambledText = ({
     console.log("ScrambledText useEffect triggered");
     if (!rootRef.current) return;
 
-    // First, ensure text is visible initially
+    // First, ensure text is not visible during initial setup
+    rootRef.current.style.opacity = '0';
     setIsVisible(true);
     
     // Store animations reference for cleanup
@@ -232,29 +233,33 @@ const ScrambledText = ({
       animationsRef.current.set(el, tl);
     });
     
-    // Prepare for initial animation by scrambling a few characters
+    // Ensure ALL characters start scrambled
     elements.forEach((el, index) => {
       if (el && el.dataset && el.dataset.content) {
-        // Start with 30% of characters already scrambled for initial effect
-        if (Math.random() < 0.3) {
-          el.textContent = getRandomChar(scrambleChars);
-        } else {
-          el.textContent = el.dataset.content;
-        }
+        // Always start scrambled - no exceptions
+        el.textContent = getRandomChar(scrambleChars);
       }
     });
     
-    // Trigger an initial animation with a longer delay to ensure everything is ready
+    // Trigger an initial animation with a shorter delay
     const initialAnimationTimeout = setTimeout(() => {
       console.log("Running initial scramble animation");
       
-      // Do a direct animation instead of event (more reliable)
-      playAllAnimations();
+      // First make the component visible
+      if (rootRef.current) {
+        rootRef.current.style.opacity = '1';
+      }
       
-      // Also dispatch an event for other components that may listen
-      const initialLoadEvent = new CustomEvent('text-initialized');
-      window.dispatchEvent(initialLoadEvent);
-    }, 1000);
+      // Short delay after becoming visible before starting animation
+      setTimeout(() => {
+        // Do a direct animation instead of event (more reliable)
+        playAllAnimations();
+        
+        // Also dispatch an event for other components that may listen
+        const initialLoadEvent = new CustomEvent('text-initialized');
+        window.dispatchEvent(initialLoadEvent);
+      }, 100);
+    }, 300);
     
     // Cleanup function
     return () => {
@@ -274,7 +279,14 @@ const ScrambledText = ({
     if (animationsRef.current && rootRef.current) {
       console.log("Playing animations on ALL characters");
       
-      // Only proceed if text is visible
+      // Ensure text container is visible before animations
+      if (rootRef.current) {
+        // Make sure it's visible in the DOM
+        rootRef.current.style.opacity = '1';
+        rootRef.current.style.visibility = 'visible';
+      }
+      
+      // Double-check state alignment
       if (!isVisible) return;
       
       let index = 0;
@@ -283,7 +295,7 @@ const ScrambledText = ({
       // Animate all characters with sequential delays
       animationsRef.current.forEach((tl, el) => {
         if (el && el.dataset && el.dataset.content) {
-          // Reset to scrambled character
+          // Ensure all characters start scrambled
           el.textContent = getRandomChar(scrambleChars);
           
           // Use sequential delay for smoother wave effect
@@ -384,7 +396,8 @@ const ScrambledText = ({
       style={{
         ...style,
         transition: 'opacity 0.5s ease',
-        opacity: isVisible ? 1 : 0, // Control visibility with state
+        opacity: 0, // Start with opacity 0 to avoid flicker
+        visibility: isVisible ? 'visible' : 'hidden', // Use visibility alongside opacity
         willChange: 'opacity' // Optimize for animations
       }}
       onMouseMove={handleMouseMove}

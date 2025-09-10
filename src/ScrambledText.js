@@ -118,8 +118,35 @@ const ScrambledText = ({
       // Only proceed if we have elements in the DOM
       if (!rootRef.current) return;
 
-      // For non-initial loads, show with scramble effect similar to initial load
+      // For any return to video 1 (after initial load), show with scramble effect
       if (!initialLoadRef.current) {
+        console.log(
+          "ScrambledText: Returning to video 1, starting scramble and reveal sequence"
+        );
+
+        // FORCE reset of all animation flags to ensure reveal can happen
+        hasPlayedInitialAnimation.current = false;
+        hasFadeoutBeenHandled.current = false;
+
+        // Stop any existing scrambling first
+        if (scrambleIntervalRef.current) {
+          clearInterval(scrambleIntervalRef.current);
+          scrambleIntervalRef.current = null;
+        }
+
+        // Kill any existing GSAP animations to prevent conflicts
+        if (animationsRef.current) {
+          animationsRef.current.forEach((tl) => {
+            if (tl.kill) tl.kill();
+          });
+        }
+
+        // Ensure container is visible and reset opacity
+        if (rootRef.current) {
+          rootRef.current.style.opacity = "1";
+          rootRef.current.style.visibility = "visible";
+        }
+
         // First set all characters to scrambled state
         if (charsRef.current && charsRef.current.length > 0) {
           charsRef.current.forEach((el) => {
@@ -129,30 +156,38 @@ const ScrambledText = ({
           });
         }
 
-        // Give the browser a moment to update the DOM and measure elements
-        setTimeout(() => {
-          // First make the container visible with scrambled text
-          if (rootRef.current) {
-            // Fade in quickly
-            gsap.to(rootRef.current, {
-              opacity: 1,
-              duration: 0.3,
-              ease: "power1.in",
-              onComplete: () => {
-                // Then play animations to reveal static text
-                playAllAnimations();
-
-                // After the animation completes, start the auto-scramble effect
-                setTimeout(() => {
-                  // Start the auto scramble effect only if we're still on video 1
-                  if (currentVideo.current === 1) {
-                    startAutoScramble();
-                  }
-                }, 500); // Give a short delay after the reveal animation
-              },
+        // Start continuous scrambling for returning to video 1
+        scrambleIntervalRef.current = setInterval(() => {
+          if (charsRef.current && charsRef.current.length > 0) {
+            charsRef.current.forEach((el) => {
+              if (el && el.dataset && el.dataset.content) {
+                if (Math.random() > 0.5) {
+                  el.textContent = getRandomChar(scrambleChars);
+                }
+              }
             });
           }
-        }, 100);
+        }, 80);
+
+        // Wait 3 seconds to show scrambling, then reveal permanently
+        setTimeout(() => {
+          console.log(
+            "ScrambledText: 3 seconds elapsed, FORCING reveal for return to video 1"
+          );
+
+          // Stop scrambling
+          if (scrambleIntervalRef.current) {
+            clearInterval(scrambleIntervalRef.current);
+            scrambleIntervalRef.current = null;
+          }
+
+          // Force the animation to play regardless of any flags
+          // Ensure isVisible is true before calling playAllAnimations
+          setIsVisible(true);
+          playAllAnimations();
+
+          // DO NOT start auto-scramble - keep text revealed permanently
+        }, 3000); // 3 second delay to match initial behavior
       }
     };
 
@@ -169,10 +204,10 @@ const ScrambledText = ({
       // Mark that we're on video 1
       currentVideo.current = 1;
 
-      // After mask fades out, transition to static text with animation
+      // Wait 3 seconds, then reveal text and keep it static
       setTimeout(() => {
         console.log(
-          "ScrambledText: Transitioning to static mode after initial mask fadeout"
+          "ScrambledText: 3 seconds elapsed, revealing text permanently"
         );
 
         // Stop the scrambling effect
@@ -187,14 +222,8 @@ const ScrambledText = ({
         // Mark initial load complete
         initialLoadRef.current = false;
 
-        // After the main animation completes, start the auto-scramble effect
-        setTimeout(() => {
-          // Start the auto scramble effect only if we're still on video 1
-          if (currentVideo.current === 1) {
-            startAutoScramble();
-          }
-        }, 1500); // Give a short delay after the reveal animation
-      }, 450); // Increased delay after mask fades out for better timing
+        // DO NOT start auto-scramble - keep text revealed permanently
+      }, 3000); // 3 second delay as requested
     };
 
     // Add event listeners
@@ -473,8 +502,8 @@ const ScrambledText = ({
         rootRef.current.style.visibility = "visible";
       }
 
-      // Double-check state alignment
-      if (!isVisible) return;
+      // Double-check state alignment - but allow for returns to video 1
+      if (!isVisible && initialLoadRef.current) return;
 
       let index = 0;
       const totalChars = animationsRef.current.size;

@@ -4,9 +4,9 @@ import { useCallback, useEffect, useRef } from "react";
 import { cn } from "src/lib/utils";
 import "./morphing-text.css";
 
-const morphTime = 5; // 5 seconds for morphing animation
+const morphTime = 4; // 4 seconds for morphing animation
 const cooldownTime = 0.5; // 0.5 seconds to prevent further morphing after completion
-const maxBlurAmount = 60; // Much higher blur for blob-like initial state
+const maxBlurAmount = 12; // Optimal blur for blob-like initial state - readable as text but very blurry
 
 const useMorphingText = (texts) => {   
   const textIndexRef = useRef(0);
@@ -26,7 +26,7 @@ const useMorphingText = (texts) => {
     if (texts.length === 1) {
       // Always show the text immediately, but with an extreme blur effect
       current1.textContent = texts[0];
-      current1.style.opacity = "100%"; // Always visible
+      current1.style.opacity = "95%"; // Match other text opacity
       
       // If we've already completed the animation once, keep it clear
       if (animatedRef.current) {
@@ -41,14 +41,14 @@ const useMorphingText = (texts) => {
         // Use a smoother curve to avoid flickering
         const blurValue = Math.max(0, maxBlurAmount * Math.pow(1 - fraction, 1.5));
         
-        // Add scale transformation to create more blob-like effect at the start
-        const scaleValue = 0.7 + (fraction * 0.3); // Start smaller and grow
+        // Add subtle scale transformation for organic blob effect
+        const scaleValue = 0.85 + (fraction * 0.15); // Start slightly smaller and grow
         
-        // Much more dramatic contrast change - starts very low (blob-like)
-        const contrastValue = 0.3 + fraction * 0.7;
+        // Moderate contrast change for better blob-to-text transition
+        const contrastValue = 0.8 + fraction * 0.2;
         
-        // Add brightness variation for more organic blob effect
-        const brightnessValue = 0.8 + fraction * 0.2;
+        // Subtle brightness variation for more organic blob effect
+        const brightnessValue = 0.9 + fraction * 0.1;
         
         // Use smoother transition for less jarring changes
         current1.style.transition = "filter 40ms ease-out, transform 40ms ease-out";
@@ -89,8 +89,8 @@ const useMorphingText = (texts) => {
   }, [texts]);
 
   const doMorph = useCallback(() => {
-    // Use appropriate increment for 5-second animation duration
-    const increment = 0.002; // Increment for 5-second blob-to-text effect
+    // Use appropriate increment for 4-second animation duration
+    const increment = 0.0025; // Increment for 4-second blob-to-text effect
     
     // Increase the morph progress
     morphRef.current += increment;
@@ -102,24 +102,17 @@ const useMorphingText = (texts) => {
     // This creates a moderate start (when text is shapeless) and a clear finish
     let fraction = morphRef.current / morphTime;
     
-    // Even smoother easing curve that completely eliminates flickering
-    // This uses a continuous function to ensure no discontinuities
-    // Implementing a custom ease-in-out that's very gradual at start
+    // Simple ease-in-out curve that feels more responsive
+    // This provides smooth animation without excessive delays
     let easedFraction;
     
-    // Use a cubic-bezier like curve for the full animation
-    // This creates a super smooth start with no discontinuities
-    if (fraction < 0.15) {
-      // Very gradual start - nearly imperceptible movement at first
-      easedFraction = 15 * Math.pow(fraction, 4);
-    } else if (fraction < 0.5) {
-      // Smooth acceleration phase
-      const normalizedFraction = (fraction - 0.15) / 0.35; // normalize to 0-1 range
-      easedFraction = 0.15 + normalizedFraction * normalizedFraction * 0.35;
+    // Use a more responsive easing curve
+    if (fraction < 0.5) {
+      // Smooth ease-in with immediate visible progress
+      easedFraction = 2 * fraction * fraction;
     } else {
-      // Final smooth deceleration to target
-      const normalizedFraction = (fraction - 0.5) / 0.5; // normalize to 0-1 range
-      easedFraction = 0.5 + (1 - Math.pow(1 - normalizedFraction, 3)) * 0.5;
+      // Smooth ease-out
+      easedFraction = 1 - 2 * Math.pow(1 - fraction, 2);
     }
     
     // Cap the fraction at 1
@@ -144,7 +137,7 @@ const useMorphingText = (texts) => {
     if (current1 && current2) {
       current2.style.filter = "none";
       current2.style.transform = "scale(1)";
-      current2.style.opacity = "100%";
+      current2.style.opacity = "95%";
       current1.style.filter = "none";
       current1.style.transform = "scale(1)";
       current1.style.opacity = "0%";
@@ -170,13 +163,20 @@ const useMorphingText = (texts) => {
           // Set up the initial blob-like state
           text1Ref.current.style.transition = "filter 40ms ease-out, transform 40ms ease-out";
           text1Ref.current.textContent = texts[0];
-          text1Ref.current.style.opacity = "1";
+          text1Ref.current.style.opacity = "0";
           text1Ref.current.style.visibility = "visible";
           text1Ref.current.style.display = "block";
-          // Start as a complete blob
-          text1Ref.current.style.filter = `blur(${maxBlurAmount}px) contrast(0.3) brightness(0.8)`;
-          text1Ref.current.style.transform = "scale(0.7)";
-          console.log('Morphing text initialized:', texts[0]);
+          
+          // Fade in the text smoothly
+          setTimeout(() => {
+            if (text1Ref.current) {
+              text1Ref.current.style.transition = "opacity 0.5s ease-in";
+              text1Ref.current.style.opacity = "0.95";
+            }
+          }, 10);
+          // Start as a blob-like state but still recognizable as text
+          text1Ref.current.style.filter = `blur(${maxBlurAmount}px) contrast(0.8) brightness(0.9)`;
+          text1Ref.current.style.transform = "scale(0.85)";
         }
       });
     }, 5); // Start even faster
@@ -342,7 +342,7 @@ export const MorphingText = ({
         className
       )}
       style={{ 
-        opacity: 1,
+        opacity: 0.95,
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',

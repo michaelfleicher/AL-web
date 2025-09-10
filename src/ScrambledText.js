@@ -169,10 +169,10 @@ const ScrambledText = ({
           }
         }, 80);
 
-        // Wait 3 seconds to show scrambling, then reveal permanently
+        // Wait 2 seconds to show scrambling, then reveal permanently
         setTimeout(() => {
           console.log(
-            "ScrambledText: 3 seconds elapsed, FORCING reveal for return to video 1"
+            "ScrambledText: 2 seconds elapsed, FORCING reveal for return to video 1"
           );
 
           // Stop scrambling
@@ -187,7 +187,7 @@ const ScrambledText = ({
           playAllAnimations();
 
           // DO NOT start auto-scramble - keep text revealed permanently
-        }, 3000); // 3 second delay to match initial behavior
+        }, 2000); // 2 second delay
       }
     };
 
@@ -204,10 +204,10 @@ const ScrambledText = ({
       // Mark that we're on video 1
       currentVideo.current = 1;
 
-      // Wait 3 seconds, then reveal text and keep it static
+      // Wait 2 seconds, then reveal text and keep it static
       setTimeout(() => {
         console.log(
-          "ScrambledText: 3 seconds elapsed, revealing text permanently"
+          "ScrambledText: 2 seconds elapsed, revealing text permanently"
         );
 
         // Stop the scrambling effect
@@ -223,7 +223,7 @@ const ScrambledText = ({
         initialLoadRef.current = false;
 
         // DO NOT start auto-scramble - keep text revealed permanently
-      }, 3000); // 3 second delay as requested
+      }, 2000); // 2 second delay
     };
 
     // Add event listeners

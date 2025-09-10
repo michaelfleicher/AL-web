@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef } from "react";
 import { cn } from "src/lib/utils";
 import "./morphing-text.css";
 
-const morphTime = 4; // 4 seconds for morphing animation
+const morphTime = 3; // 4 seconds for morphing animation
 const cooldownTime = 0.5; // 0.5 seconds to prevent further morphing after completion
 const maxBlurAmount = 12; // Optimal blur for blob-like initial state - readable as text but very blurry
 
@@ -90,7 +90,7 @@ const useMorphingText = (texts) => {
 
   const doMorph = useCallback(() => {
     // Use appropriate increment for 4-second animation duration
-    const increment = 0.0025; // Increment for 4-second blob-to-text effect
+    const increment = 0.005; // Increment for 4-second blob-to-text effect
     
     // Increase the morph progress
     morphRef.current += increment;

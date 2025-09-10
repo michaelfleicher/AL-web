@@ -54,3 +54,101 @@ span[data-morph-text="true"] {
   position: relative !important;
   display: inline-block !important;
 }
+
+/* Morphing text container styling to match ScrambledText */
+.morphed-text-container {
+  position: relative;
+  display: block;
+  line-height: 1.6;
+  font-family: 'Roboto', sans-serif; 
+  letter-spacing: 0.02em; 
+  font-kerning: normal;
+  font-feature-settings: "kern" 1;
+  text-transform: none;
+  cursor: default; 
+  transition: opacity 0.3s ease;
+  color: #d9e6ff; /* More white with slight blue tint */
+  text-shadow: 0 0 8px rgba(53, 153, 33, 1); /* Text shadow to match ScrambledText */
+  opacity: 0.95; /* 95% opacity to match ScrambledText */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  filter: drop-shadow(0 1px 1px rgba(255, 255, 255, 0)); /* Light highlight for better contrast */
+  text-align: center; /* Center text on all devices */
+}
+
+.morphed-text-container:hover {
+  opacity: 0.95; /* Maintain consistent opacity */
+}
+
+/* Morphing text span styling to match ScrambledText characters */
+.morphed-text-container span {
+  display: inline-block;
+  position: relative;
+  box-sizing: border-box;
+  text-align: center;
+  /* Prevent layout shifts */
+  vertical-align: baseline;
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+  /* Using Inter/DM Sans font to match ScrambledText */
+  font-family: 'Inter', 'DM Sans', sans-serif;
+  margin: 0;
+  padding: 0 0.01em; /* Slightly reduced padding between characters */
+  font-kerning: normal; /* Enable kerning for better readability */
+  font-feature-settings: "kern" 1; /* Enable kerning feature */
+  color: #d9e6ff; /* More white with slight blue tint */
+  text-shadow: 0 0 8px rgba(217, 230, 255, 1); /* Text shadow for individual characters */
+  will-change: transform, opacity;
+}
+
+/* Responsive styles matching ScrambledText */
+@media (max-width: 768px) {
+  .morphed-text-container {
+    font-size: 1.6rem;
+    line-height: 1.5;
+    text-align: center;
+    width: 100%;
+    max-width: 100%;
+    padding: 0 15px;
+    box-sizing: border-box;
+  }
+}
+
+@media (max-width: 480px) {
+  .morphed-text-container {
+    font-size: 1.2rem;
+    line-height: 1.4;
+    letter-spacing: 0;
+    word-break: break-word;
+    hyphens: auto;
+    text-align: center;
+    width: 100%;
+    max-width: 100%;
+    padding: 0 10px;
+    box-sizing: border-box;
+  }
+  
+  .morphed-text-container span {
+    display: inline-block;
+    padding: 0; /* Remove horizontal padding on mobile */
+  }
+}
+
+/* Small phones */
+@media (max-width: 320px) {
+  .morphed-text-container {
+    font-size: 1rem;
+    text-align: center;
+    padding: 0 8px;
+  }
+}
+
+/* Landscape optimization for mobile */
+@media (max-height: 500px) and (orientation: landscape) {
+  .morphed-text-container {
+    font-size: 1rem;
+    line-height: 1.3;
+    text-align: center;
+    padding: 0 10px;
+  }
+}

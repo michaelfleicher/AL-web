@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, createElement, useMemo, useCallback } from "react";
 import { gsap } from "gsap";
 import "./TextType.css";
+import "./fonts.css"; // Import Roboto font
 
 const TextType = ({
   text,
@@ -11,7 +12,7 @@ const TextType = ({
   initialDelay = 0,
   pauseDuration = 2000,
   deletingSpeed = 30,
-  loop = true,
+  loop = false,
   className = "",
   showCursor = true,
   hideCursorWhileTyping = false,
@@ -125,14 +126,20 @@ const TextType = ({
       if (isDeleting) {
         if (displayedText === "") {
           setIsDeleting(false);
+          
+          // If we've reached the end of all texts and we're not looping, stop here
           if (currentTextIndex === textArray.length - 1 && !loop) {
-            return;
+            if (onSentenceComplete) {
+              onSentenceComplete(textArray[currentTextIndex], currentTextIndex);
+            }
+            return; // Don't continue to the next text
           }
 
           if (onSentenceComplete) {
             onSentenceComplete(textArray[currentTextIndex], currentTextIndex);
           }
 
+          // Move to next text or loop back to the first
           setCurrentTextIndex((prev) => (prev + 1) % textArray.length);
           setCurrentCharIndex(0);
           timeout = setTimeout(() => { }, pauseDuration);
@@ -152,10 +159,16 @@ const TextType = ({
             },
             variableSpeed ? getRandomSpeed() : typingSpeed
           );
-        } else if (textArray.length > 1) {
+        } else if (textArray.length > 1 && (loop || currentTextIndex < textArray.length - 1)) {
+          // Only continue to delete and cycle to next text if:
+          // 1. We're in loop mode, OR
+          // 2. We haven't reached the last text item yet
           timeout = setTimeout(() => {
             setIsDeleting(true);
           }, pauseDuration);
+        } else if (onSentenceComplete && !loop && currentTextIndex === textArray.length - 1) {
+          // If we're at the last text item and not looping, trigger the completion callback
+          onSentenceComplete(textArray[currentTextIndex], currentTextIndex);
         }
       }
     };
@@ -198,7 +211,10 @@ const TextType = ({
     },
     <span
       className="text-type__content"
-      style={{ color: getCurrentTextColor() }}
+      style={{ 
+        color: getCurrentTextColor(),
+        textRendering: 'optimizeLegibility',
+      }}
     >
       {displayedText}
     </span>,

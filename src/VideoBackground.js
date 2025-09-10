@@ -11,8 +11,6 @@ const VideoBackground = () => {
       const layerB = document.getElementById('layerB');
       const videoA = document.getElementById('videoA');
       const videoB = document.getElementById('videoB');
-      const maskA = document.getElementById('maskA');
-      const maskB = document.getElementById('maskB');
       const badge = document.getElementById('badge');
       
       if (!layerA || !layerB || !videoA || !videoB || !badge) {
@@ -20,291 +18,119 @@ const VideoBackground = () => {
         return;
       }
       
-      console.log('Video background initialized');
+      console.log('HLS video background initialized');
       
-      // Enhance video mask transitions with improved cross-fade and longer duration
-      // This modifies how masks are faded out when videos load
-      const enhanceMaskTransitions = () => {
-        // Apply improved transition property to masks for better cross-fade
-        maskA.style.transition = "opacity 0.8s ease-out"; // Increased from 0.5s to 0.8s
-        maskB.style.transition = "opacity 0.8s ease-out"; // Increased from 0.5s to 0.8s
+      // Set up HLS video playback monitoring
+      const setupVideoEvents = (videoElement) => {
+        if (!videoElement) return;
         
-        // Force masks to be fully visible initially
-        maskA.style.opacity = '1';
-        maskB.style.opacity = '1';
-        
-        // Add event listeners to video elements for better masking
-        videoA.addEventListener('loadstart', () => {
-          // Ensure mask is fully visible when video starts loading
-          maskA.style.opacity = '1';
-          maskA.style.display = 'block';
+        videoElement.addEventListener('play', () => {
+          console.log(`Video started playing`);
         });
         
-        videoB.addEventListener('loadstart', () => {
-          // Ensure mask is fully visible when video starts loading
-          maskB.style.opacity = '1';
-          maskB.style.display = 'block';
+        videoElement.addEventListener('error', (e) => {
+          console.error(`Video error:`, e);
         });
         
-        // Enhanced loading event handling
-        const setupVideoLoadEvents = (video, mask) => {
-          // Use multiple events to ensure we catch when video is truly ready
-          const events = ['loadeddata', 'canplay', 'playing'];
-          
-          events.forEach(eventType => {
-            video.addEventListener(eventType, () => {
-              // Only start fading out mask after we're confident video is playing
-              if (eventType === 'playing') {
-                console.log(`Video is now playing, fading out mask with longer duration`);
-                
-                // For mobile devices, use a longer mask duration
-                const maskDelay = deviceType === 'mobile' ? 1500 : 800;
-                
-                setTimeout(() => {
-                  mask.style.opacity = '0';
-                  setTimeout(() => {
-                    mask.style.display = 'none';
-                  }, 800); // Match with the CSS transition duration
-                }, maskDelay);
-              }
-            });
-          });
-        };
+        videoElement.addEventListener('stalled', () => {
+          console.warn(`Video playback stalled`);
+        });
         
-        // Set up enhanced load events for both videos
-        setupVideoLoadEvents(videoA, maskA);
-        setupVideoLoadEvents(videoB, maskB);
+        videoElement.addEventListener('waiting', () => {
+          console.log(`Video is waiting for data`);
+        });
         
-        // Dispatch initial video1-fade-in event when video A is loaded
-        videoA.addEventListener('loadeddata', () => {
-          setTimeout(() => {
-            console.log('Video A loaded, triggering video1-fade-in event');
-            window.dispatchEvent(new CustomEvent('video1-fade-in'));
-          }, 300);
+        videoElement.addEventListener('canplay', () => {
+          console.log(`Video can start playback`);
         });
       };
       
-      enhanceMaskTransitions();
+      // Set up events for both videos
+      setupVideoEvents(videoA);
+      setupVideoEvents(videoB);
       
-      // Enhanced preloading mechanism for mobile devices
-      const enhanceMobilePreloading = () => {
-        if (deviceType === 'mobile') {
-          console.log('Enhanced mobile preloading activated');
+      // Optimize video playback based on device type
+      const optimizeVideoForDevice = () => {
+        const videos = [videoA, videoB];
+        
+        videos.forEach(video => {
+          if (!video) return;
           
-          // For mobile, modify the global preloaded videos tracking
-          window.mobilePreloadedVideos = window.mobilePreloadedVideos || {};
-          
-          // Function to force preload all videos for better mobile experience
-          const forcePreloadAllVideos = () => {
-            console.log('Forcing preload of all videos for mobile');
-            
-            // Get video sources from SOURCES object defined in index.html
-            const sources = window.SOURCES || {
-              1: document.getElementById('videoA').src,
-              2: document.getElementById('videoB').src
-            };
-            
-            // Create hidden preloader elements with play button masking
-            Object.entries(sources).forEach(([id, src]) => {
-              if (window.mobilePreloadedVideos[id]) return;
-              
-              console.log(`Mobile-specific preloading of video ${id}`);
-              
-              // Create preloader wrapper with stronger masking
-              const preloaderWrapper = document.createElement('div');
-              preloaderWrapper.style.position = 'absolute';
-              preloaderWrapper.style.left = '-9999px';
-              preloaderWrapper.style.width = '1px';
-              preloaderWrapper.style.height = '1px';
-              preloaderWrapper.style.opacity = '0.01'; // Not zero to ensure it loads
-              preloaderWrapper.style.overflow = 'hidden';
-              preloaderWrapper.style.pointerEvents = 'none';
-              preloaderWrapper.setAttribute('aria-hidden', 'true');
-              preloaderWrapper.dataset.mobilePreloaderId = id;
-              
-              // Create iframe for preloading
-              const hiddenPreloader = document.createElement('iframe');
-              hiddenPreloader.src = src;
-              hiddenPreloader.allow = 'autoplay';
-              hiddenPreloader.setAttribute('muted', '');
-              hiddenPreloader.setAttribute('playsinline', '');
-              hiddenPreloader.style.width = '100%';
-              hiddenPreloader.style.height = '100%';
-              hiddenPreloader.style.border = 'none';
-              
-              // Create mask to hide play button
-              const mask = document.createElement('div');
-              mask.style.position = 'absolute';
-              mask.style.inset = '0';
-              mask.style.backgroundColor = '#000';
-              mask.style.zIndex = '999';
-              
-              preloaderWrapper.appendChild(hiddenPreloader);
-              preloaderWrapper.appendChild(mask);
-              document.body.appendChild(preloaderWrapper);
-              
-              // Mark as preloaded for mobile
-              window.mobilePreloadedVideos[id] = true;
-            });
-          };
-          
-          // Force preload on various user interactions to work around mobile restrictions
-          const interactionEvents = ['touchstart', 'click', 'scroll'];
-          const preloadOnceHandler = () => {
-            forcePreloadAllVideos();
-            // Remove event listeners after first interaction
-            interactionEvents.forEach(evt => {
-              window.removeEventListener(evt, preloadOnceHandler);
-            });
-          };
-          
-          // Add event listeners for user interaction
-          interactionEvents.forEach(evt => {
-            window.addEventListener(evt, preloadOnceHandler, { once: true });
-          });
-          
-          // Also try to preload immediately (may work on some devices)
-          setTimeout(forcePreloadAllVideos, 500);
-        }
-      };
-      
-      enhanceMobilePreloading();
-      
-      // Enhance any crossfadeTo function that exists in global scope
-      if (window.crossfadeTo) {
-        const originalCrossfadeTo = window.crossfadeTo;
-        window.crossfadeTo = function(id, options = {}) {
-          // Call original function
-          const result = originalCrossfadeTo.call(this, id, options);
-          
-          // Enhance mask handling for mobile specifically
+          // Apply optimizations based on device type
           if (deviceType === 'mobile') {
-            const { nextLayer, nextVideo, nextMask } = window.getNextLayerElements ? 
-              window.getNextLayerElements() : 
-              { nextMask: id === 1 ? maskA : maskB };
-              
-            // For mobile, always show mask and wait longer
-            if (nextMask) {
-              console.log(`Mobile-specific mask handling for video ${id}`);
-              nextMask.style.opacity = '1';
-              nextMask.style.display = 'block';
-              
-              // Extend the mask duration to ensure play button is gone
-              setTimeout(() => {
-                nextMask.style.opacity = '0';
-                setTimeout(() => nextMask.style.display = 'none', 800);
-              }, 2000);
-            }
-          }
-          
-          return result;
-        };
-      }
-    };
-    
-    initVideoBackground();
-    
-    // Dispatch multiple initial fade-in events with different timing to ensure
-    // that all text components get animated properly no matter when they load
-    const sendInitialEvents = () => {
-      console.log('Sending initial fade-in events');
-      
-      // Send first event immediately
-      window.dispatchEvent(new CustomEvent('video1-fade-in'));
-      
-      // Send another after a short delay
-      setTimeout(() => {
-        window.dispatchEvent(new CustomEvent('video1-fade-in'));
-      }, 800);
-      
-      // And another after a longer delay for components that load more slowly
-      setTimeout(() => {
-        window.dispatchEvent(new CustomEvent('video1-fade-in'));
-      }, 1500);
-      
-      // If the current video is 3, also send video3-fade-in events
-      if (document.getElementById('badge').textContent === "Video: 3") {
-        console.log('Sending video3-fade-in events');
-        window.dispatchEvent(new CustomEvent('video3-fade-in'));
-        
-        setTimeout(() => {
-          window.dispatchEvent(new CustomEvent('video3-fade-in'));
-        }, 800);
-      }
-    };
-    
-    // Wait a bit for all components to be ready
-    setTimeout(sendInitialEvents, 500);
-    
-    // Add responsive handling for videos based on device type
-    const optimizeVideoForDevice = () => {
-      const videos = document.querySelectorAll('video');
-      const iframes = document.querySelectorAll('iframe');
-      
-      // Apply optimizations to traditional video elements if present
-      videos.forEach(video => {
-        // Set quality/resolution based on device type
-        if (deviceType === 'mobile') {
-          // Optimize for mobile - lower playback quality to save bandwidth
-          if (video.canPlayType('video/mp4; codecs="avc1.42E01E, mp4a.40.2"')) {
-            video.style.objectFit = 'cover';
-            // Prioritize performance on mobile
+            // Optimize for mobile
             video.setAttribute('playsinline', '');
-            video.setAttribute('preload', 'auto'); // Force preloading
+            video.setAttribute('webkit-playsinline', '');
+            video.preload = 'auto';
+            
+            // Lower resolution might be set via HLS quality selection
+          } else {
+            // Higher quality for tablets/desktop
+            video.preload = 'auto';
           }
-        } else {
-          // Higher quality for tablets/desktop
-          video.style.objectFit = 'cover';
-        }
-      });
+        });
+      };
       
-      // Apply optimizations to iframe video elements
-      iframes.forEach(iframe => {
-        if (deviceType === 'mobile') {
-          // Add additional attributes to assist with mobile playback
-          iframe.setAttribute('playsinline', '');
-          
-          // Apply custom mask over iframes specifically for mobile
-          const parent = iframe.parentElement;
-          if (parent && parent.classList.contains('layer')) {
-            const existingMask = parent.querySelector('.video-mask');
-            if (existingMask) {
-              // Extend the duration for which masks are shown on mobile
-              existingMask.style.transition = "opacity 0.8s ease-out";
-              existingMask.style.opacity = '1';
-              existingMask.style.display = 'block';
-            }
-          }
-        }
-      });
-    };
-    
-    optimizeVideoForDevice();
-    
-    // Reapply video optimizations on orientation change
-    const handleOrientationChange = () => {
-      console.log('Orientation changed, reapplying video optimizations');
-      setTimeout(() => {
-        optimizeVideoForDevice();
+      // Apply video optimizations
+      optimizeVideoForDevice();
+      
+      // Dispatch initial fade-in events to trigger text components
+      const sendInitialEvents = () => {
+        console.log('Sending initial fade-in events immediately');
         
-        // Re-preload videos on orientation change for mobile
-        if (deviceType === 'mobile' && window.mobilePreloadedVideos) {
-          Object.keys(window.mobilePreloadedVideos).forEach(id => {
-            window.mobilePreloadedVideos[id] = false;
-          });
+        // Send events immediately
+        window.dispatchEvent(new CustomEvent('video1-fade-in'));
+        
+        // Dispatch video-mask-fadeout event right away to show text immediately
+        console.log('Dispatching video-mask-fadeout event for text components');
+        window.dispatchEvent(new CustomEvent('video-mask-fadeout'));
+        
+        // Send second round with short delay
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('video1-fade-in'));
+          window.dispatchEvent(new CustomEvent('video-mask-fadeout'));
+        }, 100);
+        
+        // And another after a longer delay for components that load more slowly
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('video1-fade-in'));
+          window.dispatchEvent(new CustomEvent('video-mask-fadeout'));
+        }, 500);
+        
+        // If the current video is 3, also send video3-fade-in events
+        if (badge && badge.textContent === "Video: 3") {
+          console.log('Sending video3-fade-in events');
+          window.dispatchEvent(new CustomEvent('video3-fade-in'));
           
-          // Trigger preload again after orientation change
-          const event = new Event('orientationpreload');
-          window.dispatchEvent(event);
+          setTimeout(() => {
+            window.dispatchEvent(new CustomEvent('video3-fade-in'));
+          }, 800);
         }
-      }, 300);
+      };
+      
+      // Wait a bit for all components to be ready
+      setTimeout(() => {
+        console.log('VideoBackground checking badge before sending events:', badge ? badge.textContent : 'badge not found');
+        sendInitialEvents();
+      }, 500);
+      
+      // Handle orientation changes
+      const handleOrientationChange = () => {
+        console.log('Orientation changed, reapplying video optimizations');
+        setTimeout(() => {
+          optimizeVideoForDevice();
+        }, 300);
+      };
+      
+      window.addEventListener('orientationchange', handleOrientationChange);
+      
+      return () => {
+        window.removeEventListener('orientationchange', handleOrientationChange);
+      };
     };
     
-    window.addEventListener('orientationchange', handleOrientationChange);
-    
-    return () => {
-      window.removeEventListener('orientationchange', handleOrientationChange);
-    };
+    // Initialize the video background
+    initVideoBackground();
   }, [deviceType]);
   
   // This component doesn't render anything as the video elements

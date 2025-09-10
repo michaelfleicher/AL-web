@@ -49,7 +49,7 @@ const ScrollIndicator = () => {
         if (arrow) {
           blinkingAnimation = gsap.timeline({ repeat: -1, paused: true }) // Always start paused
             .to(arrow, { opacity: 0, duration: 0.8, ease: "power1.in" }) // Fade out
-            .to({}, { duration: 7.2 }) // Rest while hidden (total rest 8s)
+            .to({}, { duration: 3.2 }) // Rest while hidden (total rest 4s)
             .to(arrow, { opacity: 1, duration: 0.8, ease: "power1.out", onStart: () => setIsAnimating(true) }) // Fade in
             .to(arrow, {
               opacity: 0.2,
@@ -81,7 +81,7 @@ const ScrollIndicator = () => {
               onComplete: () => setIsAnimating(false)
             })
             .to(arrow, { opacity: 0, duration: 0.8, ease: "power1.in" }) // Fade out after movement
-            .to({}, { duration: 7.2 }); // Rest while hidden (total rest 8s)
+            .to({}, { duration: 3.2 }); // Rest while hidden (total rest 4s)
           
           timelineRef.current = blinkingAnimation;
           
@@ -108,7 +108,7 @@ const ScrollIndicator = () => {
           timelineRef.current.pause();
           setTimeout(() => {
             timelineRef.current.resume();
-          }, 8000); // Resume after rest period
+          }, 4000); // Resume after rest period
         }
         setIsAnimating(false);
       }

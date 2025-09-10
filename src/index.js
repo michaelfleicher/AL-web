@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './responsive-reset.css'; // Import reset CSS first
+import './globals.css'; // Import Shadcn UI styles
 import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';

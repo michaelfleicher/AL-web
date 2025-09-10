@@ -8,9 +8,14 @@ const getRandomChar = (chars) => {
   return chars.charAt(Math.floor(Math.random() * chars.length));
 };
 
-// Using OCR-A-Std font which is monospaced for better consistency
+// Helper function to get a random number between min and max (inclusive)
+const getRandomInt = (min, max) => {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+};
+
+// Using Roboto font for consistent, clean appearance
 const ScrambledText = ({
-  radius = 100,
+  radius = 30,
   duration = 1.2,
   speed = 0.5,
   scrambleChars = ":.",
@@ -25,20 +30,74 @@ const ScrambledText = ({
   const charsRef = useRef([]);
   const animationsRef = useRef(new Map());
   const [isVisible, setIsVisible] = useState(true);
+  const initialLoadRef = useRef(true); // Track if this is the initial page load
+  const scrambleIntervalRef = useRef(null); // Track the scrambling interval
+  const hasFadeoutBeenHandled = useRef(false); // Track if we've handled the mask fadeout event
+  const hasPlayedInitialAnimation = useRef(false); // Track if we've played the initial animation
+  const autoScrambleIntervalRef = useRef(null); // Track the auto scramble interval
+  const currentVideo = useRef(1); // Track current video being displayed
 
   // Listen for video transition events
   useEffect(() => {
     // Handler for when video 1 is fading out
     const handleVideo1FadeOut = () => {
-      console.log("ScrambledText: Video 1 is fading out, hiding text");
-      // Fade out the text container
+      // Only respond if we're not in initial loading state
+      if (initialLoadRef.current) return;
+      
+      console.log("ScrambledText: Video 1 is fading out with scramble animation");
+      currentVideo.current = 0; // Track that we're transitioning out of video 1
+      
+      // Stop auto scramble interval if it's running
+      if (autoScrambleIntervalRef.current) {
+        clearInterval(autoScrambleIntervalRef.current);
+        autoScrambleIntervalRef.current = null;
+      }
+      
+      // Start scrambling the text again
+      if (charsRef.current && charsRef.current.length > 0) {
+        // First, ensure all characters are re-scrambled
+        charsRef.current.forEach(el => {
+          if (el && el.dataset && el.dataset.content) {
+            el.textContent = getRandomChar(scrambleChars);
+          }
+        });
+        
+        // Start a new scrambling interval that will continue during fadeout
+        if (scrambleIntervalRef.current) {
+          clearInterval(scrambleIntervalRef.current);
+        }
+        
+        // Create scramble effect during fadeout
+        scrambleIntervalRef.current = setInterval(() => {
+          // Randomly update characters for a scrambling effect
+          if (charsRef.current && charsRef.current.length > 0) {
+            charsRef.current.forEach(el => {
+              if (el && el.dataset && el.dataset.content) {
+                // Higher chance to update each character for more noticeable effect
+                if (Math.random() > 0.5) {
+                  el.textContent = getRandomChar(scrambleChars);
+                }
+              }
+            });
+          }
+        }, 80);  // Slightly faster updates for more visible effect
+      }
+      
+      // Fade out the text container while scrambling
       if (rootRef.current) {
         gsap.to(rootRef.current, {
           opacity: 0,
           duration: 1,
-          ease: "power2.out"
+          ease: "power2.out",
+          onComplete: () => {
+            // Clean up scramble interval when fadeout is complete
+            if (scrambleIntervalRef.current) {
+              clearInterval(scrambleIntervalRef.current);
+              scrambleIntervalRef.current = null;
+            }
+            setIsVisible(false);
+          }
         });
-        setIsVisible(false);
       }
     };
 
@@ -46,47 +105,113 @@ const ScrambledText = ({
     const handleVideo1FadeIn = () => {
       console.log("ScrambledText: Video 1 is fading in, showing text");
       
+      // Mark that we're on video 1
+      currentVideo.current = 1;
+      
       // Make sure text is visible first
       setIsVisible(true);
       
       // Only proceed if we have elements in the DOM
       if (!rootRef.current) return;
       
-      // Force reset all characters to their original state
-      if (charsRef.current && charsRef.current.length > 0) {
-        charsRef.current.forEach(el => {
-          if (el && el.dataset && el.dataset.content) {
-            el.textContent = el.dataset.content;
-          }
-        });
-      }
-      
-      // Give the browser a moment to update the DOM and measure elements
-      setTimeout(() => {
-        // Then trigger scramble animations
-        if (rootRef.current) {
-          // Fade in first
-          gsap.to(rootRef.current, {
-            opacity: 1,
-            duration: 0.3,
-            ease: "power1.in",
-            onComplete: () => {
-              // Then start animation after fade in - full animation
-              playAllAnimations();
+      // For non-initial loads, show with scramble effect similar to initial load
+      if (!initialLoadRef.current) {
+        // First set all characters to scrambled state
+        if (charsRef.current && charsRef.current.length > 0) {
+          charsRef.current.forEach(el => {
+            if (el && el.dataset && el.dataset.content) {
+              el.textContent = getRandomChar(scrambleChars);
             }
           });
         }
-      }, 100);
+        
+        // Give the browser a moment to update the DOM and measure elements
+        setTimeout(() => {
+          // First make the container visible with scrambled text
+          if (rootRef.current) {
+            // Fade in quickly
+            gsap.to(rootRef.current, {
+              opacity: 1,
+              duration: 0.3,
+              ease: "power1.in",
+              onComplete: () => {
+                // Then play animations to reveal static text
+                playAllAnimations();
+                
+                // After the animation completes, start the auto-scramble effect
+                setTimeout(() => {
+                  // Start the auto scramble effect only if we're still on video 1
+                  if (currentVideo.current === 1) {
+                    startAutoScramble();
+                  }
+                }, 500); // Give a short delay after the reveal animation
+              }
+            });
+          }
+        }, 100);
+      }
+    };
+
+    // Handler for initial video mask fade-out - THE ONLY PLACE WE SHOULD TRANSITION FROM SCRAMBLED TO STATIC
+    const handleInitialMaskFadeOut = () => {
+      // Prevent handling this event multiple times
+      if (hasFadeoutBeenHandled.current) return;
+      hasFadeoutBeenHandled.current = true;
+      
+      console.log("ScrambledText: Initial video mask is fading out - THIS IS THE ONLY TRANSITION TO STATIC");
+      
+      // Mark that we're on video 1
+      currentVideo.current = 1;
+      
+      // After mask fades out, transition to static text with animation
+      setTimeout(() => {
+        console.log("ScrambledText: Transitioning to static mode after initial mask fadeout");
+        
+        // Stop the scrambling effect
+        if (scrambleIntervalRef.current) {
+          clearInterval(scrambleIntervalRef.current);
+          scrambleIntervalRef.current = null;
+        }
+        
+        // Play animation to transition from scrambled to normal text
+        playAllAnimations();
+        
+        // Mark initial load complete
+        initialLoadRef.current = false;
+        
+        // After the main animation completes, start the auto-scramble effect
+        setTimeout(() => {
+          // Start the auto scramble effect only if we're still on video 1
+          if (currentVideo.current === 1) {
+            startAutoScramble();
+          }
+        }, 1500); // Give a short delay after the reveal animation
+      }, 450); // Increased delay after mask fades out for better timing
     };
 
     // Add event listeners
     window.addEventListener('video1-fade-out', handleVideo1FadeOut);
     window.addEventListener('video1-fade-in', handleVideo1FadeIn);
+    
+    // Listen for video mask fade-out event
+    console.log('ScrambledText: Setting up listener for video-mask-fadeout event');
+    window.addEventListener('video-mask-fadeout', handleInitialMaskFadeOut);
 
     // Clean up listeners when component unmounts
     return () => {
       window.removeEventListener('video1-fade-out', handleVideo1FadeOut);
       window.removeEventListener('video1-fade-in', handleVideo1FadeIn);
+      window.removeEventListener('video-mask-fadeout', handleInitialMaskFadeOut);
+      
+      // Clean up scramble interval if it exists
+      if (scrambleIntervalRef.current) {
+        clearInterval(scrambleIntervalRef.current);
+      }
+      
+      // Clean up auto-scramble interval if it exists
+      if (autoScrambleIntervalRef.current) {
+        clearInterval(autoScrambleIntervalRef.current);
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -96,8 +221,8 @@ const ScrambledText = ({
     console.log("ScrambledText useEffect triggered");
     if (!rootRef.current) return;
 
-    // First, ensure text is not visible during initial setup
-    rootRef.current.style.opacity = '0';
+    // Make text visible immediately
+    rootRef.current.style.opacity = '1';
     setIsVisible(true);
     
     // Store animations reference for cleanup
@@ -155,12 +280,13 @@ const ScrambledText = ({
         span.textContent = char;
         span.style.display = "inline-block";
         span.style.position = "relative";
+        span.style.fontFamily = "'Roboto', sans-serif"; // Explicitly set Roboto font
         
-        // Measure the character - OCR-A-Std is monospace so all characters have the same width
+        // Measure the character width in Roboto font
         measureDiv.textContent = char;
         let width = measureDiv.getBoundingClientRect().width;
         
-        // Roboto needs consistent spacing for readability
+        // Ensure consistent spacing for Roboto readability
         
         // Apply width with a bit of padding for consistent display
         span.style.width = `${width + 1}px`; // Add 1 pixel to prevent overlap
@@ -241,29 +367,59 @@ const ScrambledText = ({
       }
     });
     
-    // Trigger an initial animation with a shorter delay
-    const initialAnimationTimeout = setTimeout(() => {
-      console.log("Running initial scramble animation");
+    // Start with scrambling for initial page load WITHOUT transitioning to static
+    const startInitialScrambling = () => {
+      console.log("Starting initial scrambling effect immediately - keeping in scrambled state until mask fades out");
       
-      // First make the component visible
+      // Make component visible first and ensure it's in the DOM
       if (rootRef.current) {
         rootRef.current.style.opacity = '1';
+        rootRef.current.style.visibility = 'visible';
       }
       
-      // Short delay after becoming visible before starting animation
-      setTimeout(() => {
-        // Do a direct animation instead of event (more reliable)
-        playAllAnimations();
+      // Set all characters to scrambled state initially
+      if (charsRef.current && charsRef.current.length > 0) {
+        charsRef.current.forEach(el => {
+          if (el && el.dataset && el.dataset.content) {
+            el.textContent = getRandomChar(scrambleChars);
+          }
+        });
+      }
+      
+      // ONLY create a scrambling interval for the initial page load
+      if (initialLoadRef.current) {
+        // Clear any existing interval
+        if (scrambleIntervalRef.current) {
+          clearInterval(scrambleIntervalRef.current);
+        }
         
-        // Also dispatch an event for other components that may listen
+        // Start a new scrambling interval that will continue until explicitly stopped
+        // Use a faster update interval to make the scrambling more noticeable immediately
+        scrambleIntervalRef.current = setInterval(() => {
+          // Randomly update characters for a scrambling effect
+          if (charsRef.current && charsRef.current.length > 0) {
+            charsRef.current.forEach(el => {
+              if (el && el.dataset && el.dataset.content) {
+                // 50% chance to update each character for a more active initial effect
+                if (Math.random() > 0.5) {
+                  el.textContent = getRandomChar(scrambleChars);
+                }
+              }
+            });
+          }
+        }, 80);
+        
+        // Dispatch an event for other components that may listen
         const initialLoadEvent = new CustomEvent('text-initialized');
         window.dispatchEvent(initialLoadEvent);
-      }, 100);
-    }, 300);
+      }
+    };
+    
+    // Start scrambling immediately
+    startInitialScrambling();
     
     // Cleanup function
     return () => {
-      clearTimeout(initialAnimationTimeout);
       // Ensure no lingering animations - use stored ref
       if (animationsMapRef.current) {
         animationsMapRef.current.forEach((tl) => {
@@ -274,10 +430,28 @@ const ScrambledText = ({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [children, radius, duration, speed, scrambleChars]);
   
-  // Function to play animations on all characters (for initialization)
+  // Function to play animations on all characters (transition from scrambled to normal)
   const playAllAnimations = () => {
+    // For initial load, ensure we only run this once to avoid multiple transitions
+    if (initialLoadRef.current) {
+      if (hasPlayedInitialAnimation.current) {
+        console.log("Skipping duplicate animation during initial load");
+        return;
+      }
+      hasPlayedInitialAnimation.current = true;
+    }
+    
     if (animationsRef.current && rootRef.current) {
-      console.log("Playing animations on ALL characters");
+      console.log("Playing animations to reveal final text");
+      
+      // Record the time when animation completes
+      window.initialAnimationCompletedTime = Date.now();
+      
+      // Stop any ongoing scrambling
+      if (scrambleIntervalRef.current) {
+        clearInterval(scrambleIntervalRef.current);
+        scrambleIntervalRef.current = null;
+      }
       
       // Ensure text container is visible before animations
       if (rootRef.current) {
@@ -310,6 +484,62 @@ const ScrambledText = ({
         }
       });
     }
+  };
+  
+  // Function to start the auto-scramble animation that occurs every 4 seconds
+  const startAutoScramble = () => {
+    // Clear any existing interval first
+    if (autoScrambleIntervalRef.current) {
+      clearInterval(autoScrambleIntervalRef.current);
+    }
+    
+    console.log("Starting auto-scramble animation every 4 seconds");
+    
+    // Set up the interval to run every 4 seconds
+    autoScrambleIntervalRef.current = setInterval(() => {
+      // Only proceed if we're still on video 1 and have characters to animate
+      if (currentVideo.current !== 1 || !charsRef.current || charsRef.current.length === 0) {
+        clearInterval(autoScrambleIntervalRef.current);
+        autoScrambleIntervalRef.current = null;
+        return;
+      }
+      
+      // Get a random number of characters to animate (between 2 and 12)
+      const numCharsToAnimate = getRandomInt(2, 12);
+      
+      // Get random indices of characters to animate
+      const allIndices = Array.from({ length: charsRef.current.length }, (_, i) => i);
+      const shuffledIndices = allIndices.sort(() => Math.random() - 0.5);
+      const indicesToAnimate = shuffledIndices.slice(0, numCharsToAnimate);
+      
+      // Animate these characters
+      indicesToAnimate.forEach(idx => {
+        const el = charsRef.current[idx];
+        if (!el || !el.dataset || !el.dataset.content) return;
+        
+        const originalChar = el.dataset.content;
+        
+        // Create a mini scramble animation for this character
+        const scrambleDuration = 0.8; // Total duration of scramble effect
+        const numSteps = 4;           // Number of character changes
+        
+        // Start the character animation
+        let step = 0;
+        const charInterval = setInterval(() => {
+          step++;
+          
+          if (step < numSteps) {
+            // Show scrambled character
+            el.textContent = getRandomChar(scrambleChars);
+          } else {
+            // Final step - restore original character
+            el.textContent = originalChar;
+            clearInterval(charInterval);
+          }
+        }, scrambleDuration * 2000 / numSteps);
+      });
+      
+    }, 8000); // Run every 8 seconds
   };
   
   // Function to play animations around a specific point
@@ -369,6 +599,19 @@ const ScrambledText = ({
   
   // Function to handle mouse move
   const handleMouseMove = (e) => {
+    // Skip mouse interactions during initial loading phase or if scrambling is still active
+    if (initialLoadRef.current || scrambleIntervalRef.current) {
+      return;
+    }
+    
+    // Also skip for a short time after initial load completes to avoid accidental triggers
+    if (hasPlayedInitialAnimation.current) {
+      const timeSinceInitialAnimation = Date.now() - (window.initialAnimationCompletedTime || 0);
+      if (timeSinceInitialAnimation < 1000) { // 1 second cooldown after initial animation
+        return;
+      }
+    }
+    
     // Get mouse position relative to the document
     const x = e.clientX;
     const y = e.clientY;
@@ -383,7 +626,9 @@ const ScrambledText = ({
       // Short delay to ensure everything is ready
       setTimeout(() => {
         // Use the full animation for visibility changes
-        playAllAnimations();
+        if (!initialLoadRef.current) {
+          playAllAnimations();
+        }
       }, 200);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -395,8 +640,8 @@ const ScrambledText = ({
       className={`text-block ${className}`}
       style={{
         ...style,
-        transition: 'opacity 0.5s ease',
-        opacity: 0, // Start with opacity 0 to avoid flicker
+        transition: 'opacity 0.3s ease', // Faster transition
+        opacity: 1, // Start with opacity 1 to be immediately visible
         visibility: isVisible ? 'visible' : 'hidden', // Use visibility alongside opacity
         willChange: 'opacity' // Optimize for animations
       }}

@@ -85,7 +85,7 @@ video {
   
   .big-text {
     font-size: var(--big-text-size-desktop);
-    margin-bottom: 2rem;
+    margin-bottom: 1rem;
   }
   
   .small-text {
@@ -144,10 +144,10 @@ video {
   padding: 1rem;
 }
 
-/* Prevent text overflow issues */
+/* Ensure text is fully visible without trimming */
 .text-type-container {
   width: 100%;
   box-sizing: border-box;
-  overflow: hidden;
+  overflow: visible;
   padding: 0 1rem;
 }

@@ -4,14 +4,17 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Extending Humanity's Healthspan</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=Inter:wght@300;400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="%PUBLIC_URL%/fonts.css" />
-  <!-- Preload video helper script -->
-  <link rel="preload" href="%PUBLIC_URL%/video-helper.js" as="script">
+  <!-- HLS.js for video playback -->
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
   <!-- 
     Important notes about this implementation:
-    1. Videos must be muted for autoplay to work in most browsers
+    1. Videos now use HLS (HTTP Live Streaming) for better compatibility
     2. Video 1 and 3 need loop=true, while 2 and 4 should have loop=false
-    3. If videos don't autoplay, the user may need to click once on the page
+    3. HLS.js is used for browsers that don't support HLS natively (like Chrome)
   -->
   <style>
     html, body {
@@ -47,24 +50,12 @@
       will-change: opacity; /* Optimize for layer compositing */
       transform: translateZ(0); /* Force GPU acceleration */
     }
-    .video-mask {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      z-index: 1;
-      background-color: #000;
-      pointer-events: none;
-      opacity: 1;
-      transition: opacity 0.5s ease-out; /* Increased transition time */
-    }
     .layer.active { opacity: 1; }
-    iframe { 
+    video { 
       width: 100%; 
       height: 100%; 
       border: none; 
       background: #000; 
-      pointer-events: none; /* Allow scrolling through the iframe */
       position: absolute;
       top: 0;
       left: 0;
@@ -142,31 +133,50 @@
 
   <div class="stage" aria-label="Video Stage">
     <div class="layer active" id="layerA">
-      <iframe id="videoA" frameborder="0" allowfullscreen allow="autoplay" autoplay muted></iframe>
-      <div id="maskA" class="video-mask"></div>
+      <video id="videoA" playsinline webkit-playsinline muted autoplay></video>
     </div>
     <div class="layer" id="layerB">
-      <iframe id="videoB" frameborder="0" allowfullscreen allow="autoplay" autoplay muted></iframe>
-      <div id="maskB" class="video-mask"></div>
+      <video id="videoB" playsinline webkit-playsinline muted autoplay></video>
     </div>
   </div>
 
-  <div class="badge" id="badge" style="display: none;">Video: —</div>
+  <div class="badge" id="badge" style="opacity: 0; position: fixed; z-index: -1;">Video: 1</div>
 
   <!-- Controls removed: Reset to First Video button deleted -->
 
   <script>
-    // === Bunny Stream iframe embed URLs with autoplay, muted, and loop options ===
-    // Using your provided URLs with corrections for autoplay and looping requirements
+    // === HLS URLs for video streaming ===
+    // Using provided HLS playlist URLs for better compatibility
+    
+    // Detect if device is iOS
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    
+    // HLS video sources
     const SOURCES = {
       // Video 1 - should loop when site loads
-      1: 'https://iframe.mediadelivery.net/embed/484331/6f66940f-70ad-4431-bcab-486d3047c53d?autoplay=true&loop=true&muted=true&preload=true&responsive=true&fullscreen=true',
+      1: "https://vz-3b8e2dcb-339.b-cdn.net/6f66940f-70ad-4431-bcab-486d3047c53d/playlist.m3u8",
       // Video 2 - plays once then goes to video 3
-      2: 'https://iframe.mediadelivery.net/embed/484331/3b69f9ef-a23a-4551-bd6f-01328b5777bb?autoplay=true&loop=false&muted=true&preload=true&responsive=true&fullscreen=true',
+      2: "https://vz-3b8e2dcb-339.b-cdn.net/3b69f9ef-a23a-4551-bd6f-01328b5777bb/playlist.m3u8",
       // Video 3 - should be different from video 2 and should loop
-      3: 'https://iframe.mediadelivery.net/embed/484331/c68ab894-5fc2-4b8b-907f-ecb3dd15dcc8?autoplay=true&loop=true&muted=true&preload=true&responsive=true&fullscreen=true',
+      3: "https://vz-3b8e2dcb-339.b-cdn.net/c68ab894-5fc2-4b8b-907f-ecb3dd15dcc8/playlist.m3u8",
       // Video 4 - plays once then goes to video 1
-      4: 'https://iframe.mediadelivery.net/embed/484331/8c4625f8-0b01-4e2f-abfb-69a4bc07ec75?autoplay=true&loop=false&muted=true&preload=true&responsive=true&fullscreen=true'
+      4: "https://vz-3b8e2dcb-339.b-cdn.net/8c4625f8-0b01-4e2f-abfb-69a4bc07ec75/playlist.m3u8"
+    };
+    
+    // Configuration for HLS videos
+    const HLS_CONFIG = {
+      autoStartLoad: true,
+      startPosition: -1,
+      capLevelToPlayerSize: true,
+      debug: false,
+      defaultAudioCodec: undefined,
+      initialLiveManifestSize: 1,
+      maxBufferLength: 30,
+      maxMaxBufferLength: 600,
+      maxBufferSize: 60 * 1000 * 1000,
+      maxBufferHole: 0.5,
+      lowLatencyMode: false,
+      enableWorker: true
     };
 
     let activeLayer = 'A';
@@ -175,59 +185,50 @@
     let playingOnce = false;
     let preloadedVideos = {}; // Track which videos are preloaded
     let loadedVideos = {}; // Track which videos have been fully loaded once
+    let hlsInstances = {}; // Track HLS instances for each video
     let siteInitialLoadComplete = false; // Flag to track if the site has been loaded once
 
     const layerA = document.getElementById('layerA');
     const layerB = document.getElementById('layerB');
     const videoA = document.getElementById('videoA');
     const videoB = document.getElementById('videoB');
-    const maskA = document.getElementById('maskA');
-    const maskB = document.getElementById('maskB');
     const badge  = document.getElementById('badge');
-  // const restartBtn = document.getElementById('restart'); // Removed
-
+  
     function getNextLayerElements() {
       const nextLayer = activeLayer === 'A' ? layerB : layerA;
       const nextVideo = activeLayer === 'A' ? videoB : videoA;
-      const nextMask = activeLayer === 'A' ? maskB : maskA;
       const curLayer  = activeLayer === 'A' ? layerA : layerB;
       const curVideo  = activeLayer === 'A' ? videoA : videoB;
-      const curMask = activeLayer === 'A' ? maskA : maskB;
-      return { nextLayer, nextVideo, nextMask, curLayer, curVideo, curMask };
+      return { nextLayer, nextVideo, curLayer, curVideo };
     }
 
-    function setBadge(id) { badge.textContent = `Video: ${id}`; }
+    function setBadge(id) { 
+      badge.textContent = `Video: ${id}`;
+      console.log(`Badge updated: Video ${id} now active`);
+    }
 
-    // Function to get the URL with the appropriate loop parameter
-    function getSourceURL(id, loop = false) {
-      let url = SOURCES[id];
-      // The URLs already have loop parameters set correctly based on our rules
-      return url;
+    // Function to get the URL for a specific video
+    function getSourceURL(id) {
+      return SOURCES[id];
     }
     
-    // Enhanced preloading mechanism for videos with extended masking
+    // Enhanced preloading mechanism for HLS videos
     function preloadVideo(id, priority = 'low') {
       if (preloadedVideos[id] || !SOURCES[id]) return;
       
       console.log(`Preloading video ${id} with ${priority} priority...`);
       
-      // Create preload link for resource hint - higher priority
+      // Create preload link for resource hint
       const preloadLink = document.createElement('link');
       preloadLink.rel = 'preload';
       preloadLink.href = SOURCES[id];
-      preloadLink.as = 'iframe';
+      preloadLink.as = 'fetch';
+      preloadLink.type = 'application/vnd.apple.mpegurl';
       preloadLink.importance = priority; // 'high', 'low', or 'auto'
       document.head.appendChild(preloadLink);
       
-      // Also use prefetch for better browser support
-      const prefetchLink = document.createElement('link');
-      prefetchLink.rel = 'prefetch';
-      prefetchLink.href = SOURCES[id];
-      prefetchLink.as = 'document'; // Treat as document for better prefetching
-      document.head.appendChild(prefetchLink);
-      
-      // Create hidden iframe for actual content preloading with improved masking strategy
-      const hiddenPreloader = document.createElement('iframe');
+      // Create a hidden video element for preloading
+      const hiddenPreloader = document.createElement('video');
       hiddenPreloader.style.position = 'absolute';
       hiddenPreloader.style.width = '1px';
       hiddenPreloader.style.height = '1px';
@@ -235,45 +236,52 @@
       hiddenPreloader.style.pointerEvents = 'none';
       hiddenPreloader.setAttribute('aria-hidden', 'true');
       hiddenPreloader.style.display = 'none';
-      hiddenPreloader.allow = 'autoplay';
-      hiddenPreloader.allowFullscreen = true;
-      
-      // Create a mask for the hidden preloader to hide play button
-      const preloaderMask = document.createElement('div');
-      preloaderMask.style.position = 'absolute';
-      preloaderMask.style.inset = '0';
-      preloaderMask.style.backgroundColor = '#000';
-      preloaderMask.style.zIndex = '10';
-      
-      // Create wrapper to contain both iframe and its mask
-      const preloaderWrapper = document.createElement('div');
-      preloaderWrapper.style.position = 'absolute';
-      preloaderWrapper.style.overflow = 'hidden';
-      preloaderWrapper.style.width = '1px';
-      preloaderWrapper.style.height = '1px';
-      preloaderWrapper.style.opacity = '0';
-      preloaderWrapper.style.pointerEvents = 'none';
-      preloaderWrapper.setAttribute('aria-hidden', 'true');
-      preloaderWrapper.style.display = 'none';
-      preloaderWrapper.dataset.preloaderId = id;
-      
-      // Set iframe source and append to wrapper
-      hiddenPreloader.src = SOURCES[id];
+      hiddenPreloader.muted = true;
+      hiddenPreloader.autoplay = false;
+      hiddenPreloader.playsInline = true;
+      hiddenPreloader.setAttribute('webkit-playsinline', '');
+      hiddenPreloader.preload = 'auto';
       hiddenPreloader.dataset.preloadId = id;
-      preloaderWrapper.appendChild(hiddenPreloader);
-      preloaderWrapper.appendChild(preloaderMask);
-      document.body.appendChild(preloaderWrapper);
+      document.body.appendChild(hiddenPreloader);
       
-      hiddenPreloader.onload = () => {
-        console.log(`Video ${id} hidden iframe preloaded successfully`);
-        // Keep preloaded content for much longer to ensure it's ready
-        // But still clean up eventually to prevent memory issues
-        setTimeout(() => {
-          if (document.contains(preloaderWrapper)) {
-            preloaderWrapper.remove();
+      // Initialize HLS
+      if (Hls.isSupported()) {
+        const hls = new Hls(HLS_CONFIG);
+        hls.loadSource(SOURCES[id]);
+        hls.attachMedia(hiddenPreloader);
+        hls.on(Hls.Events.MANIFEST_PARSED, function() {
+          console.log(`Video ${id} HLS manifest loaded successfully`);
+        });
+        
+        hls.on(Hls.Events.ERROR, function(event, data) {
+          if (data.fatal) {
+            console.error(`Fatal error with video ${id} preloading:`, data.type);
+            hls.destroy();
           }
-        }, 180000); // 3 minutes - significantly longer retention of preloaded content
-      };
+        });
+        
+        // Store the HLS instance for future reference
+        if (!hlsInstances[`preload-${id}`]) {
+          hlsInstances[`preload-${id}`] = hls;
+        }
+      } else if (hiddenPreloader.canPlayType('application/vnd.apple.mpegurl')) {
+        // Native HLS support (iOS Safari)
+        hiddenPreloader.src = SOURCES[id];
+        hiddenPreloader.load();
+        console.log(`Video ${id} using native HLS support for preloading`);
+      }
+      
+      // Set a timeout to clean up the preloader element
+      setTimeout(() => {
+        if (document.contains(hiddenPreloader)) {
+          // Destroy HLS instance if it exists
+          if (hlsInstances[`preload-${id}`]) {
+            hlsInstances[`preload-${id}`].destroy();
+            delete hlsInstances[`preload-${id}`];
+          }
+          hiddenPreloader.remove();
+        }
+      }, 180000); // 3 minutes retention
       
       preloadedVideos[id] = true;
     }
@@ -283,7 +291,7 @@
       if (inTransition) return;
       inTransition = true;
 
-      const { nextLayer, nextVideo, nextMask, curLayer, curVideo, curMask } = getNextLayerElements();
+      const { nextLayer, nextVideo, curLayer, curVideo } = getNextLayerElements();
       console.log('Switching to video:', id, loop ? '(looping)' : '(once)');
       
       // Dispatch custom events for ScrambledText component
@@ -317,157 +325,178 @@
         }, 500);
       }
       
-      // Check if we already have a preloaded version of this video
-      const preloadedFrame = document.querySelector(`iframe[data-preload-id="${id}"]`);
-      let usePreloaded = false;
-      
-      if (preloadedFrame) {
-        console.log(`Using preloaded video ${id}`);
-        usePreloaded = true;
+      // Set up video with HLS
+      // If we have a previous HLS instance for this video, destroy it
+      if (hlsInstances[activeLayer === 'A' ? 'B' : 'A']) {
+        hlsInstances[activeLayer === 'A' ? 'B' : 'A'].destroy();
+        delete hlsInstances[activeLayer === 'A' ? 'B' : 'A'];
       }
       
-      // Only use masks during initial site load, not during transitions
-      // Check if this is the very first video load on the page and site hasn't been loaded yet
-      if (currentVideoId === null && id === 1 && !siteInitialLoadComplete) {
-        // Set up the mask for the cross-fade transition
-        nextMask.style.opacity = '1';
-        nextMask.style.display = 'block';
+      // Set video loop property based on video ID (1 and 3 should loop)
+      nextVideo.loop = (id === 1 || id === 3);
+      
+      // Initialize HLS.js for the video if supported
+      if (Hls.isSupported()) {
+        const hls = new Hls(HLS_CONFIG);
+        hls.loadSource(getSourceURL(id));
+        hls.attachMedia(nextVideo);
         
-        // Set up video loaded event to fade out the mask with a smooth crossfade
-        nextVideo.onload = () => {
-          // Keep mask displayed significantly longer to ensure video is truly ready and play button is gone
-          setTimeout(() => {
-            // Apply the crossfade transition for minimal transition
-            nextMask.style.opacity = '0';
-            // Remove the mask from DOM after the transition completes
-            setTimeout(() => {
-              nextMask.style.display = 'none';
-            }, 500); // Match this with the CSS transition duration
-          }, 1500); // Significantly increased delay (from 500ms to 1500ms)
-        };
+        // Store the HLS instance
+        hlsInstances[activeLayer === 'A' ? 'B' : 'A'] = hls;
         
-        // Backup timeout in case onload doesn't fire
-        setTimeout(() => {
-          // Apply the crossfade transition for minimal transition
-          nextMask.style.opacity = '0';
-          // Remove the mask from DOM after the transition completes
-          setTimeout(() => {
-            nextMask.style.display = 'none';
-          }, 500); // Match this with the CSS transition duration
-        }, 3000); // Significantly increased delay (from 1500ms to 3000ms)
-      } else if (!loadedVideos[id]) {
-        // Only use masks for videos that haven't been loaded yet
-        console.log(`First-time loading video ${id}, using mask`);
-        nextMask.style.opacity = '1';
-        nextMask.style.display = 'block';
-        
-        // Set up a timer to fade out the mask after the video is ready
-        nextVideo.onload = () => {
-          // Mark this video as loaded for future reference
-          loadedVideos[id] = true;
-          console.log(`Video ${id} marked as loaded, future transitions will skip masking`);
+        hls.on(Hls.Events.MANIFEST_PARSED, function() {
+          console.log(`Video ${id} manifest parsed, starting playback`);
+          nextVideo.play().catch(e => {
+            console.error('Error playing video:', e);
+            
+            // Try again with user interaction if autoplay fails
+            document.addEventListener('click', function playOnClick() {
+              nextVideo.play();
+              document.removeEventListener('click', playOnClick);
+            }, { once: true });
+          });
           
-          setTimeout(() => {
-            nextMask.style.opacity = '0';
-            setTimeout(() => {
-              nextMask.style.display = 'none';
-            }, 500);
-          }, 1000); 
-        };
-        
-        // Backup timeout in case onload doesn't fire
-        setTimeout(() => {
-          // Mark as loaded in the backup timeout as well
-          loadedVideos[id] = true;
-          
-          nextMask.style.opacity = '0';
-          setTimeout(() => {
-            nextMask.style.display = 'none';
-          }, 500);
-        }, 2000);
-      } else {
-        // This video has already been loaded once, no need for masking
-        console.log(`Video ${id} already loaded, skipping mask`);
-        nextMask.style.opacity = '0';
-        nextMask.style.display = 'none';
-      }
-      
-      // If we have a preloaded frame, use its content
-      if (usePreloaded && preloadedFrame) {
-        nextVideo.src = preloadedFrame.src;
-        // Remove the preloaded frame as we're now using it in the main UI
-        setTimeout(() => {
-          preloadedFrame.remove();
-        }, 500);
-      } else {
-        // Set the iframe source with appropriate parameters
-        nextVideo.src = getSourceURL(id, loop);
-      }
-
-      // Allow a moment for the iframe to load before showing it
-      // Give preloaded content slightly more time to ensure play button is gone
-      setTimeout(() => {
-        // Only proceed with showing the video once we're confident it's ready
-        const ensureVideoReady = () => {
           // Show the next video with crossfade
           nextLayer.classList.add('active');
           curLayer.classList.remove('active');
           
-          // Clear the current video iframe source after transition to stop loading/playing
+          // Update tracking variables
+          activeLayer = (activeLayer === 'A') ? 'B' : 'A';
+          currentVideoId = id;
+          setBadge(id);
+          
+          // Mark as loaded
+          loadedVideos[id] = true;
+          
+          // Clean up current video after transition
           setTimeout(() => {
-            curVideo.src = '';
+            if (curVideo.pause) {
+              curVideo.pause();
+              curVideo.removeAttribute('src');
+              curVideo.load();
+            }
             inTransition = false;
             
-            // Mark site as loaded after first video completes its transition
-            if (currentVideoId === null) {
+            // Mark site as loaded after first video completes transition
+            if (!siteInitialLoadComplete) {
               siteInitialLoadComplete = true;
               console.log("Initial site load complete");
             }
             
-            // Mark this video as loaded so we don't mask it again
-            loadedVideos[id] = true;
-            console.log(`Video ${id} marked as fully loaded, future transitions will skip masking`);
-            
             console.log(`Video ${id} now active and visible`);
-          
-          // Advanced preloading strategy - preload next videos based on current video
-          if (id === 1) {
-            preloadVideo(2, 'high'); // Next direct in sequence - high priority
-            setTimeout(() => {
-              preloadVideo(3, 'high'); // Will be needed after video 2
+            
+            // Advanced preloading strategy
+            if (id === 1) {
+              preloadVideo(2, 'high'); // Next direct in sequence - high priority
               setTimeout(() => {
-                preloadVideo(4, 'low'); // Will be needed after video 3
+                preloadVideo(3, 'high'); // Will be needed after video 2
+                setTimeout(() => {
+                  preloadVideo(4, 'low'); // Will be needed after video 3
+                }, 1000);
               }, 1000);
-            }, 1000);
-          } else if (id === 2) {
-            preloadVideo(3, 'high'); // Next direct in sequence - high priority
-            preloadVideo(4, 'low');  // Will be needed after video 3
-          } else if (id === 3) {
-            preloadVideo(4, 'high'); // Next direct in sequence - high priority
-            preloadVideo(1, 'low');  // Will be needed after video 4
-          } else if (id === 4) {
-            preloadVideo(1, 'high'); // Next direct in sequence - high priority
-            preloadVideo(2, 'low');  // Will be needed after video 1
+            } else if (id === 2) {
+              preloadVideo(3, 'high'); // Next direct in sequence - high priority
+              preloadVideo(4, 'low');  // Will be needed after video 3
+            } else if (id === 3) {
+              preloadVideo(4, 'high'); // Next direct in sequence - high priority
+              preloadVideo(1, 'low');  // Will be needed after video 4
+            } else if (id === 4) {
+              preloadVideo(1, 'high'); // Next direct in sequence - high priority
+              preloadVideo(2, 'low');  // Will be needed after video 1
+            }
+          }, 1000);
+          
+          // Show hint text only when video 1 is playing, hide for all others
+          const hintText = document.getElementById('hintText');
+          if (hintText) {
+            if (id === 1) {
+              hintText.style.display = 'block';
+            } else {
+              hintText.style.display = 'none';
+            }
           }
-        }, 1000);
+        });
         
-        activeLayer = (activeLayer === 'A') ? 'B' : 'A';
-        currentVideoId = id;
-        setBadge(id);
-        
-        // Show hint text only when video 1 is playing, hide for all others
-        const hintText = document.getElementById('hintText');
-        if (hintText) {
-          if (id === 1) {
-            hintText.style.display = 'block';
-          } else {
-            hintText.style.display = 'none';
+        // Add error handling
+        hls.on(Hls.Events.ERROR, function(event, data) {
+          console.error(`HLS error for video ${id}:`, data);
+          if (data.fatal) {
+            console.error(`Fatal error with video ${id}:`, data.type);
+            
+            // Try to recover
+            switch(data.type) {
+              case Hls.ErrorTypes.NETWORK_ERROR:
+                console.log('Network error, trying to recover...');
+                hls.startLoad();
+                break;
+              case Hls.ErrorTypes.MEDIA_ERROR:
+                console.log('Media error, trying to recover...');
+                hls.recoverMediaError();
+                break;
+              default:
+                console.error('Unrecoverable error, destroying HLS instance');
+                hls.destroy();
+                
+                // Fall back to native player if possible
+                if (nextVideo.canPlayType('application/vnd.apple.mpegurl')) {
+                  nextVideo.src = getSourceURL(id);
+                  nextVideo.play().catch(e => console.error('Native fallback error:', e));
+                }
+                break;
+            }
           }
-        }
+        });
+      } else if (nextVideo.canPlayType('application/vnd.apple.mpegurl')) {
+        // For browsers with native HLS support (iOS Safari)
+        console.log(`Using native HLS support for video ${id}`);
+        nextVideo.src = getSourceURL(id);
+        
+        // Play the video
+        nextVideo.play().catch(e => {
+          console.error('Error playing video with native HLS:', e);
+        });
+        
+        // Set up loadedmetadata event to handle transition
+        nextVideo.onloadedmetadata = function() {
+          // Show the next video with crossfade
+          nextLayer.classList.add('active');
+          curLayer.classList.remove('active');
+          
+          // Update tracking variables
+          activeLayer = (activeLayer === 'A') ? 'B' : 'A';
+          currentVideoId = id;
+          setBadge(id);
+          loadedVideos[id] = true;
+          
+          // Clean up current video
+          setTimeout(() => {
+            if (curVideo.pause) {
+              curVideo.pause();
+              curVideo.removeAttribute('src');
+              curVideo.load();
+            }
+            inTransition = false;
+            
+            if (!siteInitialLoadComplete) {
+              siteInitialLoadComplete = true;
+            }
+            
+            // Preload next videos
+            if (id === 1) preloadVideo(2, 'high');
+            else if (id === 2) preloadVideo(3, 'high');
+            else if (id === 3) preloadVideo(4, 'high');
+            else if (id === 4) preloadVideo(1, 'high');
+          }, 1000);
         };
         
-        ensureVideoReady();
-      }, usePreloaded ? 250 : 400); // Slightly longer delay to ensure video is ready
+        // Error handler for native playback
+        nextVideo.onerror = function(e) {
+          console.error(`Error with native HLS playback for video ${id}:`, e);
+        };
+      } else {
+        console.error('HLS is not supported in this browser and no fallback available');
+        inTransition = false;
+      }
     }
 
     async function playOnceThen(nextId, thenId, thenLoop=true) {
@@ -476,9 +505,10 @@
       
       // Using the exact video durations you provided
       // Converted from seconds to milliseconds (seconds × 1000)
+      // For video 2, we add 1.3 seconds (1300ms) to delay the transition to video 3
       const videoDurations = {
         1: 49000, // Video 1: 49 seconds
-        2: 5000,  // Video 2: 5 seconds
+        2: 6300,  // Video 2: 6.3 seconds
         3: 32000, // Video 3: 32 seconds
         4: 5000   // Video 4: 5 seconds
       };
@@ -531,7 +561,7 @@
       updateScrollProgress(dir);
       
       if (dir === 'down') {
-        // Scroll down: alternate between main videos via transitions
+        // Scroll down: only go from video 1 to video 3
         switch(currentVideoId) {
           case 1:
             // From main video 1, go to transition video 2, then to main video 3
@@ -540,19 +570,25 @@
             playOnceThen(2, 3, true);
             break;
           case 3:
-            // From main video 3, go to transition video 4, then back to main video 1
-            // Before making the transition, ensure video 1 is preloaded since it's next after 4
-            preloadVideo(1, 'high');
-            playOnceThen(4, 1, true);
+            // If we're already on video 3 and scrolling down, do nothing
+            // This prevents looping back to video 1 when scrolling down from video 3
+            console.log('Already at the bottom video (3), ignoring scroll down');
             break;
           default:
             // If we're somehow on a transition video directly, go to video 1
             crossfadeTo(1, { loop: true });
         }
       } else if (dir === 'up') {
-        // Scroll up: go through transition video 4 first, then reset to video 1
-        preloadVideo(1, 'high'); // Preload video 1 since we'll need it after video 4
-        playOnceThen(4, 1, true); // Play transition video 4 once, then switch to video 1 (looping)
+        // Scroll up: only go from video 3 to video 1
+        if (currentVideoId === 3) {
+          // Only respond to scroll up if we're on video 3
+          preloadVideo(1, 'high'); // Preload video 1 since we'll need it after video 4
+          playOnceThen(4, 1, true); // Play transition video 4 once, then switch to video 1 (looping)
+        } else if (currentVideoId === 1) {
+          // If we're already on video 1 and scrolling up, do nothing
+          // This prevents restarting video 1 when scrolling up
+          console.log('Already at the top video (1), ignoring scroll up');
+        }
       }
     }
 
@@ -641,16 +677,154 @@
       });
     }
     
+    // Function to check if video is loading properly
+    function checkVideoLoading() {
+      console.log("Checking if videos are loading properly...");
+      
+      // For iOS devices which are more problematic
+      if (isIOS) {
+        let videoLoadTimeout;
+        let videoLoadAttempts = 0;
+        const maxAttempts = 3;
+        
+        const checkVideoStatus = () => {
+          videoLoadAttempts++;
+          console.log(`iOS video load check attempt: ${videoLoadAttempts}/${maxAttempts}`);
+          
+          const videoA = document.getElementById('videoA');
+          const videoB = document.getElementById('videoB');
+          
+          // Check if iframe content is accessible
+          let videoALoaded = false;
+          let videoBLoaded = false;
+          
+          try {
+            // Try to access iframe content which will throw errors if blocked
+            if (videoA && videoA.contentWindow) {
+              videoALoaded = true;
+            }
+            if (videoB && videoB.contentWindow) {
+              videoBLoaded = true;
+            }
+          } catch (e) {
+            console.error("Error accessing iframe content:", e);
+          }
+          
+          console.log(`Video loading status - A: ${videoALoaded ? 'OK' : 'FAIL'}, B: ${videoBLoaded ? 'OK' : 'FAIL'}`);
+          
+          // If videos aren't loading after multiple attempts, switch to fallback
+          if ((!videoALoaded || !videoBLoaded) && videoLoadAttempts >= maxAttempts) {
+            console.warn("Videos failed to load properly after multiple attempts, using fallback");
+            setupFallbackImages();
+          } else if (videoLoadAttempts < maxAttempts) {
+            // Try again in a few seconds
+            videoLoadTimeout = setTimeout(checkVideoStatus, 2000);
+          }
+        };
+        
+        // Start checking video loading status
+        videoLoadTimeout = setTimeout(checkVideoStatus, 3000);
+      }
+    }
+    
+    // Setup fallback images if videos fail to load
+    function setupFallbackImages() {
+      console.log("Setting up fallback static images instead of videos");
+      
+      // Create fallback image elements
+      const createFallbackImage = (videoId) => {
+        // Map video IDs to appropriate fallback images
+        // You'll need to provide actual image URLs here
+        const fallbackImageUrls = {
+          1: 'https://placehold.co/1920x1080/000000/FFFFFF/png?text=Video+1+Fallback',
+          2: 'https://placehold.co/1920x1080/000000/FFFFFF/png?text=Video+2+Fallback',
+          3: 'https://placehold.co/1920x1080/000000/FFFFFF/png?text=Video+3+Fallback', 
+          4: 'https://placehold.co/1920x1080/000000/FFFFFF/png?text=Video+4+Fallback'
+        };
+        
+        const img = document.createElement('img');
+        img.src = fallbackImageUrls[videoId] || fallbackImageUrls[1];
+        img.style.position = 'absolute';
+        img.style.inset = '0';
+        img.style.width = '100%';
+        img.style.height = '100%';
+        img.style.objectFit = 'cover';
+        img.alt = `Fallback image for video ${videoId}`;
+        
+        return img;
+      };
+      
+      // Replace videos with fallback images
+      const videoA = document.getElementById('videoA');
+      const videoB = document.getElementById('videoB');
+      const layerA = document.getElementById('layerA');
+      const layerB = document.getElementById('layerB');
+      
+      // Clean up any HLS instances first
+      Object.keys(hlsInstances).forEach(key => {
+        hlsInstances[key].destroy();
+      });
+      hlsInstances = {};
+      
+      if (videoA && layerA) {
+        const fallbackA = createFallbackImage(currentVideoId || 1);
+        videoA.style.display = 'none';
+        layerA.insertBefore(fallbackA, videoA);
+      }
+      
+      if (videoB && layerB) {
+        const fallbackB = createFallbackImage(2);  // Default to video 2 for layerB
+        videoB.style.display = 'none';
+        layerB.insertBefore(fallbackB, videoB);
+      }
+      
+      // Modify crossfade behavior for static images
+      window.originalCrossfadeTo = window.crossfadeTo;
+      window.crossfadeTo = function(id, options = {}) {
+        console.log(`Static image fallback: switching to image ${id}`);
+        
+        // Update current video ID and badge
+        currentVideoId = id;
+        if (badge) badge.textContent = `Image: ${id}`;
+        
+        // Get layers
+        const nextLayer = activeLayer === 'A' ? layerB : layerA;
+        const curLayer = activeLayer === 'A' ? layerA : layerB;
+        
+        // Replace the fallback image in the next layer
+        const nextVideo = activeLayer === 'A' ? videoB : videoA;
+        const existingImg = nextLayer.querySelector('img');
+        if (existingImg) nextLayer.removeChild(existingImg);
+        
+        const newFallback = createFallbackImage(id);
+        nextLayer.insertBefore(newFallback, nextVideo);
+        
+        // Crossfade to the next layer
+        nextLayer.classList.add('active');
+        curLayer.classList.remove('active');
+        
+        // Toggle active layer
+        activeLayer = activeLayer === 'A' ? 'B' : 'A';
+        
+        // Dispatch appropriate events based on the image ID
+        if (id === 1) {
+          setTimeout(() => {
+            window.dispatchEvent(new CustomEvent('video1-fade-in'));
+          }, 500);
+        } else if (id === 3) {
+          setTimeout(() => {
+            window.dispatchEvent(new CustomEvent('video3-fade-in'));
+          }, 500);
+        }
+      };
+      
+      // Trigger initial fade-in
+      window.dispatchEvent(new CustomEvent('video1-fade-in'));
+    }
+    
     // Initialize videos on page load
     window.addEventListener('DOMContentLoaded', () => {
       console.log("Page loaded, initializing first video");
-      
-      // Initialize masks - only for first load
-      maskA.style.opacity = '1';
-      maskA.style.display = 'block';
-      // We only need one mask for the initial load
-      maskB.style.opacity = '0';
-      maskB.style.display = 'none';
       
       // Trigger event to make scrambled text visible with video 1
       setTimeout(() => {
@@ -661,22 +835,21 @@
       // Setup advanced preloading with intersection observers
       setupIntersectionObserver();
       
-      // Immediately start preloading all videos to prevent play button visibility
-      // Preload video 2 immediately as it will be needed first
+      // Start preloading videos
       preloadVideo(2, 'high');
       
-      // Start with video 1 but give time for browser to start fetching preloaded content
+      // Start with video 1
       setTimeout(() => {
         crossfadeTo(1, { loop: true });
         
-        // Aggressive preloading strategy - load all videos quickly 
+        // Aggressive preloading strategy - load all videos quickly
         setTimeout(() => {
-          // Preload remaining videos right away
+          // Preload remaining videos
           preloadVideo(3, 'high');
           preloadVideo(4, 'high');
           
           console.log("All videos are being aggressively preloaded");
-        }, 1000); // Short delay to prioritize video 1 and 2 first
+        }, 1000);
       }, 300);
     });
   </script>

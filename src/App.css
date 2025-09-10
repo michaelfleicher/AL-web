@@ -44,15 +44,25 @@
   font-size: 3rem;
   font-weight: 700;
   margin-bottom: 2rem;
-  line-height: 1.4;
+  line-height: 1.6;
   display: block;
   width: 100%;
   overflow: visible;
+}
+
+@keyframes fadeIn {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
   visibility: visible;
-  letter-spacing: 0.01em;
+  letter-spacing: 0.02em;
   white-space: normal;
-  text-shadow: 0 0 10px rgba(0,0,0,0.5);
+  text-shadow: 0 0 8px rgba(217, 230, 255, 1); /* Text shadow to match the new whiter color */
   cursor: default;
+  color: #d9e6ff; /* More white with slight blue tint */
+  opacity: 0.95; /* 95% opacity to match TextType */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  filter: drop-shadow(0 1px 1px rgba(255, 255, 255, 0)); /* Light highlight for better contrast */
 }
 
 .small-text {
@@ -60,15 +70,19 @@
   font-weight: 400;
   margin-bottom: 2rem;
   line-height: 1.6;
-  color: #ffffff; /* Changed from #a3b1c6 to white */
+  color: #d9e6ff; /* More white with slight blue tint */
   display: block;
   width: 100%;
   overflow: visible;
   visibility: visible;
-  letter-spacing: 0.01em;
+  letter-spacing: 0.02em;
   white-space: normal;
-  text-shadow: 0 0 10px rgba(0,0,0,0.5);
+  text-shadow: 0 0 8px rgba(217, 230, 255, 1); /* Text shadow to match the new whiter color */
   cursor: default;
+  opacity: 0.95; /* 95% opacity to match TextType */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  filter: drop-shadow(0 1px 1px rgba(255, 255, 255, 0)); /* Light highlight for better contrast */
 }
 
 .char {
@@ -97,4 +111,53 @@
 /* Styling for TextType component in Video 3 */
 .text-type-container {
   z-index: 15;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+}
+
+.video3-text {
+  text-align: center;
+  width: 100%;
+  margin: 0 auto;
+  min-height: min-content;
+  overflow: visible;
+}
+
+/* Responsive styling for the brand name */
+.brand-name {
+  font-size: 4rem !important;
+  line-height: 1.2 !important;
+  letter-spacing: 0.03em !important;
+}
+
+@media (min-width: 768px) {
+  .brand-name {
+    font-size: 5rem !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  .brand-name {
+    font-size: 6rem !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .brand-name {
+    font-size: 3rem !important;
+  }
+}
+
+/* Additional positioning for morphing text across different devices */
+@keyframes moveUp {
+  from { transform: translate(-50%, 0); }
+  to { transform: translate(-50%, -100%); } /* Move it up more */
+}
+
+.morphing-text-container {
+  animation: fadeIn 1.5s ease-in;
+  position: static !important; /* Do not offset child morph containers */
+  top: auto !important;
 }

@@ -1,0 +1,84 @@
+/* Consistent final styling for morphing text to match TextType */
+/* Base text styling during and after animation */
+.morphed-text-container span[data-morph-text="true"] {
+  font-family: 'Inter', 'DM Sans', sans-serif !important;
+  -webkit-font-smoothing: antialiased !important;
+  -moz-osx-font-smoothing: grayscale !important;
+  color: #d9e6ff !important;
+  letter-spacing: 0.02em !important;
+  text-shadow: 0 0 8px rgba(217, 230, 255, 1) !important;
+  display: inline-block !important;
+  width: 100% !important;
+  text-align: center !important;
+  position: relative !important;
+  left: 0 !important;
+  right: 0 !important;
+  margin: 0 auto !important;
+}
+
+/* Final weight should match TextType (400) once clear */
+.morphed-text-container span[data-morph-text="true"]:not([style*="blur"]) {
+  font-weight: 400 !important;
+}
+
+/* Size only; keep same weight (400) for both */
+.brand-name .morphed-text-container span[data-morph-text="true"] {
+  font-size: 2.5rem; /* mobile */
+}
+
+.tagline-text .morphed-text-container span[data-morph-text="true"] {
+  font-size: 2rem; /* mobile */
+}
+
+/* Responsive typography for tablets */
+@media screen and (min-width: 480px) and (max-width: 1023px) {
+  .brand-name .morphed-text-container span[data-morph-text="true"] {
+    font-size: 4rem;
+  }
+  .tagline-text .morphed-text-container span[data-morph-text="true"] {
+    font-size: 3rem;
+  }
+}
+
+/* Responsive typography for desktop */
+@media screen and (min-width: 1024px) {
+  .brand-name .morphed-text-container span[data-morph-text="true"] {
+    font-size: 5.2rem;
+  }
+  .tagline-text .morphed-text-container span[data-morph-text="true"] {
+    font-size: 3.8rem;
+  }
+}
+
+/* Specific fixes for small phones (iPhone widths) */
+@media screen and (max-width: 480px) {
+  /* Let the full-screen flex container center naturally */
+  .brand-text-container {
+    left: 0 !important;
+    right: 0 !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    transform: none !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  .morphed-text-container {
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    text-align: center !important;
+  }
+
+  .brand-name .morphed-text-container span,
+  .tagline-text .morphed-text-container span {
+    width: 100% !important;
+    text-align: center !important;
+    left: 0 !important;
+    right: 0 !important;
+    position: relative !important;
+    margin: 0 auto !important;
+    display: inline-block !important;
+  }
+}

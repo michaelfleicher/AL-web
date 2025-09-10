@@ -3,26 +3,43 @@
   white-space: pre-wrap;
   max-width: 100%;
   box-sizing: border-box;
+  text-align: center;
+  margin: 0 auto;
+  overflow: visible;
+  min-height: min-content;
 }
 
 .text-type__cursor {
   margin-left: 0.25rem;
   display: inline-block;
   opacity: 1;
+  color: #d9e6ff; /* Match the text color */
 }
 
 .text-type__cursor--hidden {
   display: none;
 }
 
+.text-type-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+}
+
 /* Make text larger for better visibility */
 .text-type__content {
   font-size: 2rem;
-  font-weight: 400;
+  font-weight: 400; /* Increased font weight for better clarity */
   line-height: 1.6;
-  color: #ffffff;
-  letter-spacing: 0.01em;
-  text-shadow: 0 0 12px rgba(0,0,0,0.8);
+  color: #d9e6ff; /* More white with slight blue tint */
+  letter-spacing: 0.02em; /* Slightly increased letter spacing */
+  text-shadow: 0 0 8px rgba(217, 230, 255, 1); /* Text shadow to match the new whiter color */
+  font-family: 'Inter', 'DM Sans', sans-serif;
+  -webkit-font-smoothing: antialiased; /* Improved font rendering */
+  -moz-osx-font-smoothing: grayscale;
+  opacity: 0.95; /* 95% opacity for a slight transparency effect */
+  filter: drop-shadow(0 1px 1px rgba(255, 255, 255, 0)); /* Light highlight for better contrast */
 }
 
 /* Responsive styles for TextType */

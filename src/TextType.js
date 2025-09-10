@@ -1,6 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState, createElement, useMemo, useCallback } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  createElement,
+  useMemo,
+  useCallback,
+} from "react";
 import { gsap } from "gsap";
 import "./TextType.css";
 import "./fonts.css"; // Import Roboto font
@@ -34,7 +41,10 @@ const TextType = ({
   const cursorRef = useRef(null);
   const containerRef = useRef(null);
 
-  const textArray = useMemo(() => (Array.isArray(text) ? text : [text]), [text]);
+  const textArray = useMemo(
+    () => (Array.isArray(text) ? text : [text]),
+    [text]
+  );
 
   const getRandomSpeed = useCallback(() => {
     if (!variableSpeed) return typingSpeed;
@@ -84,8 +94,9 @@ const TextType = ({
       console.log("TextType: Video 3 is fading in, showing text");
       setIsVisible(true);
       if (containerRef.current) {
-        gsap.fromTo(containerRef.current, 
-          { opacity: 0 }, 
+        gsap.fromTo(
+          containerRef.current,
+          { opacity: 0 },
           { opacity: 1, duration: 1, ease: "power2.in" }
         );
       }
@@ -97,19 +108,19 @@ const TextType = ({
         gsap.to(containerRef.current, {
           opacity: 0,
           duration: 1,
-          ease: "power2.out"
+          ease: "power2.out",
         });
       }
     };
 
     // Add event listeners for video 3 transitions
-    window.addEventListener('video3-fade-in', handleVideo3FadeIn);
-    window.addEventListener('video3-fade-out', handleVideo3FadeOut);
+    window.addEventListener("video3-fade-in", handleVideo3FadeIn);
+    window.addEventListener("video3-fade-out", handleVideo3FadeOut);
 
     // Clean up listeners when component unmounts
     return () => {
-      window.removeEventListener('video3-fade-in', handleVideo3FadeIn);
-      window.removeEventListener('video3-fade-out', handleVideo3FadeOut);
+      window.removeEventListener("video3-fade-in", handleVideo3FadeIn);
+      window.removeEventListener("video3-fade-out", handleVideo3FadeOut);
     };
   }, []);
 
@@ -126,7 +137,7 @@ const TextType = ({
       if (isDeleting) {
         if (displayedText === "") {
           setIsDeleting(false);
-          
+
           // If we've reached the end of all texts and we're not looping, stop here
           if (currentTextIndex === textArray.length - 1 && !loop) {
             if (onSentenceComplete) {
@@ -142,7 +153,7 @@ const TextType = ({
           // Move to next text or loop back to the first
           setCurrentTextIndex((prev) => (prev + 1) % textArray.length);
           setCurrentCharIndex(0);
-          timeout = setTimeout(() => { }, pauseDuration);
+          timeout = setTimeout(() => {}, pauseDuration);
         } else {
           timeout = setTimeout(() => {
             setDisplayedText((prev) => prev.slice(0, -1));
@@ -159,14 +170,21 @@ const TextType = ({
             },
             variableSpeed ? getRandomSpeed() : typingSpeed
           );
-        } else if (textArray.length > 1 && (loop || currentTextIndex < textArray.length - 1)) {
+        } else if (
+          textArray.length > 1 &&
+          (loop || currentTextIndex < textArray.length - 1)
+        ) {
           // Only continue to delete and cycle to next text if:
           // 1. We're in loop mode, OR
           // 2. We haven't reached the last text item yet
           timeout = setTimeout(() => {
             setIsDeleting(true);
           }, pauseDuration);
-        } else if (onSentenceComplete && !loop && currentTextIndex === textArray.length - 1) {
+        } else if (
+          onSentenceComplete &&
+          !loop &&
+          currentTextIndex === textArray.length - 1
+        ) {
           // If we're at the last text item and not looping, trigger the completion callback
           onSentenceComplete(textArray[currentTextIndex], currentTextIndex);
         }
@@ -180,7 +198,6 @@ const TextType = ({
     }
 
     return () => clearTimeout(timeout);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     currentCharIndex,
     displayedText,
@@ -196,6 +213,7 @@ const TextType = ({
     reverseMode,
     variableSpeed,
     onSentenceComplete,
+    getRandomSpeed,
   ]);
 
   const shouldHideCursor =
@@ -211,9 +229,9 @@ const TextType = ({
     },
     <span
       className="text-type__content"
-      style={{ 
+      style={{
         color: getCurrentTextColor(),
-        textRendering: 'optimizeLegibility',
+        textRendering: "optimizeLegibility",
       }}
     >
       {displayedText}
@@ -221,7 +239,9 @@ const TextType = ({
     showCursor && (
       <span
         ref={cursorRef}
-        className={`text-type__cursor ${cursorClassName} ${shouldHideCursor ? "text-type__cursor--hidden" : ""}`}
+        className={`text-type__cursor ${cursorClassName} ${
+          shouldHideCursor ? "text-type__cursor--hidden" : ""
+        }`}
       >
         {cursorCharacter}
       </span>

@@ -77,10 +77,9 @@ const useMorphingText = (texts) => {
     current2.textContent = texts[(textIndexRef.current + 1) % texts.length];
   }, [texts]);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const doMorph = useCallback(() => {
     // Use a time-based increment for a smoother animation
-    const increment = 0.004; // Even smaller increment for smoother animation
+    const increment = 0.006; // Slightly larger increment for better performance
     
     // Increase the morph progress
     morphRef.current += increment;
@@ -165,6 +164,11 @@ const useMorphingText = (texts) => {
     }, 10);
     
     const animate = () => {
+      // Check if component is still mounted before continuing
+      if (!text1Ref.current || !text2Ref.current) {
+        return; // Stop animation if refs are null (component unmounted)
+      }
+
       animationFrameId = requestAnimationFrame(animate);
 
       const newTime = new Date();
@@ -176,6 +180,9 @@ const useMorphingText = (texts) => {
         // Continue animating until we reach the end (when animatedRef becomes true)
         if (!animatedRef.current) {
           doMorph();
+        } else {
+          // Animation completed, stop the loop
+          cancelAnimationFrame(animationFrameId);
         }
       } else {
         cooldownRef.current -= dt;

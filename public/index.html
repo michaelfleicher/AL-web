@@ -494,30 +494,81 @@
           console.error(`Error with native HLS playback for video ${id}:`, e);
         };
       } else {
-        console.error('HLS is not supported in this browser and no fallback available');
-        inTransition = false;
+        console.error('HLS is not supported in this browser, attempting graceful degradation');
+        
+        // Show a static background instead of video
+        nextLayer.style.background = '#000';
+        nextLayer.innerHTML = `
+          <div style="
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+            color: #fff;
+            font-family: 'Roboto', sans-serif;
+            text-align: center;
+            opacity: 0.3;
+          ">
+            <div>Video ${id}</div>
+          </div>
+        `;
+        
+        // Still proceed with the layer transition
+        nextLayer.classList.add('active');
+        curLayer.classList.remove('active');
+        
+        activeLayer = (activeLayer === 'A') ? 'B' : 'A';
+        currentVideoId = id;
+        setBadge(id);
+        
+        setTimeout(() => {
+          inTransition = false;
+        }, 1000);
       }
+    }
+
+    // Store actual video durations
+    let videoDurations = {
+      1: 49000, // Fallback values
+      2: 6300,
+      3: 32000,
+      4: 5000
+    };
+
+    // Function to get actual video duration
+    function getVideoDuration(videoElement) {
+      if (videoElement && !isNaN(videoElement.duration) && videoElement.duration > 0) {
+        return videoElement.duration * 1000; // Convert to milliseconds
+      }
+      return null;
     }
 
     async function playOnceThen(nextId, thenId, thenLoop=true) {
       playingOnce = true;
       await crossfadeTo(nextId, { loop: false });
       
-      // Using the exact video durations you provided
-      // Converted from seconds to milliseconds (seconds × 1000)
-      // For video 2, we add 1.3 seconds (1300ms) to delay the transition to video 3
-      const videoDurations = {
-        1: 49000, // Video 1: 49 seconds
-        2: 6300,  // Video 2: 6.3 seconds
-        3: 32000, // Video 3: 32 seconds
-        4: 5000   // Video 4: 5 seconds
-      };
+      // Use fallback durations for now since actual duration detection is unreliable
+      // during rapid transitions. We'll detect duration after the video is fully loaded.
+      let duration = videoDurations[nextId] || 15000;
+      console.log(`Using duration for video ${nextId}: ${duration}ms`);
+      
+      // Set up a timeout to detect actual duration after the video loads
+      setTimeout(() => {
+        const currentVideo = activeLayer === 'A' ? videoA : videoB;
+        const actualDuration = getVideoDuration(currentVideo);
+        if (actualDuration && Math.abs(actualDuration - videoDurations[nextId]) > 1000) {
+          // Only update if the difference is significant (>1 second)
+          videoDurations[nextId] = actualDuration;
+          console.log(`Updated duration cache for video ${nextId}: ${actualDuration}ms`);
+        }
+      }, 2000); // Check after 2 seconds when video should be loaded
       
       setTimeout(async () => {
-        console.log(`Video ${nextId} estimated to have ended, switching to ${thenId}`);
+        console.log(`Video ${nextId} duration completed, switching to ${thenId}`);
         playingOnce = false;
         await crossfadeTo(thenId, { loop: thenLoop });
-      }, videoDurations[nextId] || 15000); // Default to 15s if duration unknown
+      }, duration);
     }
 
     // Track scroll progress to predict upcoming video needs

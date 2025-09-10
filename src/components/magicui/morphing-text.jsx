@@ -4,9 +4,9 @@ import { useCallback, useEffect, useRef } from "react";
 import { cn } from "src/lib/utils";
 import "./morphing-text.css";
 
-const morphTime = 1; // 1 second for the morphing animation
+const morphTime = 5; // 5 seconds for morphing animation
 const cooldownTime = 0.5; // 0.5 seconds to prevent further morphing after completion
-const maxBlurAmount = 20; // Increased from 8 for a more extreme, shapeless initial state
+const maxBlurAmount = 60; // Much higher blur for blob-like initial state
 
 const useMorphingText = (texts) => {   
   const textIndexRef = useRef(0);
@@ -39,23 +39,34 @@ const useMorphingText = (texts) => {
       if (fraction < 1) {
         // Start with extreme blur and gradually reduce to 0
         // Use a smoother curve to avoid flickering
-        const blurValue = Math.max(0, maxBlurAmount * Math.pow(1 - fraction, 1.2));
+        const blurValue = Math.max(0, maxBlurAmount * Math.pow(1 - fraction, 1.5));
         
-        // More gradual contrast increase
-        const contrastValue = 0.64 + fraction * 0.35;
+        // Add scale transformation to create more blob-like effect at the start
+        const scaleValue = 0.7 + (fraction * 0.3); // Start smaller and grow
         
-        // Use a consistent, very short transition to ensure no flickering
-        current1.style.transition = "filter 25ms linear";
+        // Much more dramatic contrast change - starts very low (blob-like)
+        const contrastValue = 0.3 + fraction * 0.7;
+        
+        // Add brightness variation for more organic blob effect
+        const brightnessValue = 0.8 + fraction * 0.2;
+        
+        // Use smoother transition for less jarring changes
+        current1.style.transition = "filter 40ms ease-out, transform 40ms ease-out";
         
         // Round to 2 decimal places to avoid micro-changes causing flicker
         const roundedBlur = Math.round(blurValue * 100) / 100;
         const roundedContrast = Math.round(contrastValue * 100) / 100;
+        const roundedBrightness = Math.round(brightnessValue * 100) / 100;
+        const roundedScale = Math.round(scaleValue * 1000) / 1000;
         
-        current1.style.filter = `blur(${roundedBlur}px) contrast(${roundedContrast})`;
+        // Combine multiple filters for blob effect
+        current1.style.filter = `blur(${roundedBlur}px) contrast(${roundedContrast}) brightness(${roundedBrightness})`;
+        current1.style.transform = `scale(${roundedScale})`;
       } else {
-        // Ensure a smooth final transition
-        current1.style.transition = "filter 30ms ease-out";
+        // Ensure a smooth final transition to clear text
+        current1.style.transition = "filter 60ms ease-out, transform 60ms ease-out";
         current1.style.filter = "none";
+        current1.style.transform = "scale(1)";
         animatedRef.current = true;
       }
       
@@ -78,8 +89,8 @@ const useMorphingText = (texts) => {
   }, [texts]);
 
   const doMorph = useCallback(() => {
-    // Use a time-based increment for a smoother animation
-    const increment = 0.006; // Slightly larger increment for better performance
+    // Use appropriate increment for 5-second animation duration
+    const increment = 0.002; // Increment for 5-second blob-to-text effect
     
     // Increase the morph progress
     morphRef.current += increment;
@@ -132,8 +143,10 @@ const useMorphingText = (texts) => {
     const [current1, current2] = [text1Ref.current, text2Ref.current];
     if (current1 && current2) {
       current2.style.filter = "none";
+      current2.style.transform = "scale(1)";
       current2.style.opacity = "100%";
       current1.style.filter = "none";
+      current1.style.transform = "scale(1)";
       current1.style.opacity = "0%";
     }
   }, []);
@@ -154,14 +167,19 @@ const useMorphingText = (texts) => {
       requestAnimationFrame(() => {
         // Set initial styles to prevent flickering
         if (text1Ref.current && texts.length === 1) {
-          // Set up the initial state with transition already enabled
-          text1Ref.current.style.transition = "filter 30ms linear";
+          // Set up the initial blob-like state
+          text1Ref.current.style.transition = "filter 40ms ease-out, transform 40ms ease-out";
           text1Ref.current.textContent = texts[0];
-          text1Ref.current.style.opacity = "100%";
-          text1Ref.current.style.filter = `blur(${maxBlurAmount}px) contrast(0.6)`;
+          text1Ref.current.style.opacity = "1";
+          text1Ref.current.style.visibility = "visible";
+          text1Ref.current.style.display = "block";
+          // Start as a complete blob
+          text1Ref.current.style.filter = `blur(${maxBlurAmount}px) contrast(0.3) brightness(0.8)`;
+          text1Ref.current.style.transform = "scale(0.7)";
+          console.log('Morphing text initialized:', texts[0]);
         }
       });
-    }, 10);
+    }, 5); // Start even faster
     
     const animate = () => {
       // Check if component is still mounted before continuing
@@ -227,6 +245,7 @@ const Texts = ({ texts, className }) => {
           left: '0',
           right: '0',
           margin: '0 auto',
+          transformOrigin: 'center center', // Ensure scaling happens from center
         }}
         data-morph-text="true"
       />
@@ -245,6 +264,7 @@ const Texts = ({ texts, className }) => {
           left: '0',
           right: '0',
           margin: '0 auto',
+          transformOrigin: 'center center', // Ensure scaling happens from center
         }}
       />
     </>
@@ -337,7 +357,7 @@ export const MorphingText = ({
         margin: '0 auto',
         left: '0',
         right: '0',
-        willChange: 'filter',
+        willChange: 'filter, transform',
         ...style
       }}
     >

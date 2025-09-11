@@ -51,8 +51,12 @@
 }
 
 @keyframes fadeIn {
-  0% { opacity: 0; }
-  100% { opacity: 1; }
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
   visibility: visible;
   letter-spacing: 0.02em;
   white-space: normal;
@@ -62,7 +66,9 @@
   opacity: 0.95; /* 95% opacity to match TextType */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  filter: drop-shadow(0 1px 1px rgba(255, 255, 255, 0)); /* Light highlight for better contrast */
+  filter: drop-shadow(
+    0 1px 1px rgba(255, 255, 255, 0)
+  ); /* Light highlight for better contrast */
 }
 
 .small-text {
@@ -82,7 +88,9 @@
   opacity: 0.95; /* 95% opacity to match TextType */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  filter: drop-shadow(0 1px 1px rgba(255, 255, 255, 0)); /* Light highlight for better contrast */
+  filter: drop-shadow(
+    0 1px 1px rgba(255, 255, 255, 0)
+  ); /* Light highlight for better contrast */
 }
 
 .char {
@@ -152,12 +160,26 @@
 
 /* Additional positioning for morphing text across different devices */
 @keyframes moveUp {
-  from { transform: translate(-50%, 0); }
-  to { transform: translate(-50%, -100%); } /* Move it up more */
+  from {
+    transform: translate(-50%, 0);
+  }
+  to {
+    transform: translate(-50%, -100%);
+  } /* Move it up more */
 }
 
 .morphing-text-container {
   animation: fadeIn 1.5s ease-in;
   position: static !important; /* Do not offset child morph containers */
   top: auto !important;
+}
+
+#brand-name-styling > span,
+#tagline-name-styling > span {
+  color: #d9e6ff !important;
+  text-shadow: 0 0 8px rgba(217, 230, 255, 1) !important;
+  font-family: "Inter", "DM Sans", sans-serif !important;
+  -webkit-font-smoothing: antialiased !important; /* Improved font rendering */
+  -moz-osx-font-smoothing: grayscale !important;
+  opacity: 0.95 !important; /* 95% opacity for a slight transparency effect */
 }
